@@ -1,0 +1,7 @@
+# Godot 4 cache and build output
+.godot/
+*.uid
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="BallerStats" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/stats/BallerStats.gd" id="1_ballerstats"]
+
+[resource]
+script = ExtResource("1_ballerstats")
+display_name = "Stars PG"
+position = 0
+shooting_2pt = 0.50
+shooting_3pt = 0.35
+speed = 5
+handle = 5
+pass_rating = 5
+offensive_rating = 50
+defensive_rating = 50
+rebound_rating = 3
+block_rating = 3
+max_stamina = 140
+gravity_base = 3
+hype_charge_rate = 0.25
+turnover_chance = 0.05

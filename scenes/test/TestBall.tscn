@@ -1,0 +1,15 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scenes/test/TestBall.gd" id="1_testball"]
+[ext_resource type="PackedScene" path="res://debug/GridOverlay.tscn" id="2_gridoverlay"]
+[ext_resource type="PackedScene" path="res://entities/ball/Basketball.tscn" id="3_basketball"]
+[ext_resource type="PackedScene" path="res://entities/ball/Hoop.tscn" id="4_hoop"]
+
+[node name="TestBall" type="Node2D"]
+script = ExtResource("1_testball")
+
+[node name="GridOverlay" parent="." instance=ExtResource("2_gridoverlay")]
+
+[node name="Basketball" parent="." instance=ExtResource("3_basketball")]
+
+[node name="Hoop" parent="." instance=ExtResource("4_hoop")]

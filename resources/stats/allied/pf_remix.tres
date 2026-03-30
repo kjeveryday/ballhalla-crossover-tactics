@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="BallerStats" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://resources/stats/BallerStats.gd" id="1_ballerstats"]
+
+[resource]
+script = ExtResource("1_ballerstats")
+display_name = "Remix PF"
+position = 3
+shooting_2pt = 0.55
+shooting_3pt = 0.28
+speed = 3
+handle = 4
+pass_rating = 4
+offensive_rating = 58
+defensive_rating = 60
+rebound_rating = 7
+block_rating = 6
+max_stamina = 170
+gravity_base = 4
+hype_charge_rate = 0.25
+turnover_chance = 0.02
