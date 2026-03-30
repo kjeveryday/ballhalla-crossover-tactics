@@ -57,19 +57,19 @@ func end_beat_early() -> void:
 # --- Beat resolution stubs (wired in later steps) ---
 
 func _resolve_in_motion_ballers() -> void:
-	pass  # Step 7: movement resolution
+	MovementSystem.resolve_all_in_motion()
 
 func _resolve_enemy_movement() -> void:
-	pass  # Step 11: EnemyAI movement
+	EnemyAI.update_enemy_movement()
 
 func _resolve_enemy_actions() -> void:
-	pass  # Step 11: EnemyAI actions
+	EnemyAI.resolve_enemy_actions()
 
 func _apply_idle_recovery() -> void:
-	pass  # Step 8: StaminaSystem.apply_idle_recovery()
+	StaminaSystem.apply_idle_recovery()
 
 func _expire_active_play() -> void:
 	pass  # Step 4 (play call): deactivate play if unused
 
 func _check_double_team_triggers() -> void:
-	pass  # Step 3 (gravity): GravitySystem.check_double_team_triggers()
+	GravitySystem.check_double_team_triggers()

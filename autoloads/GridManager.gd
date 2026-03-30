@@ -124,6 +124,9 @@ func grid_to_world(col: int, row: int) -> Vector2:  # Center of a grid cell in w
 		col * CELL_SIZE + CELL_SIZE * 0.5
 	)
 
+func chebyshev_distance(col1: int, row1: int, col2: int, row2: int) -> int:
+	return max(abs(col1 - col2), abs(row1 - row2))
+
 func world_to_grid(world_pos: Vector2) -> Vector2i:  # World pos → (col, row), (-1,-1) if OOB
 	var col: int = int(world_pos.y / CELL_SIZE)
 	var row: int = GRID_ROWS - 1 - int(world_pos.x / CELL_SIZE)
