@@ -5,6 +5,7 @@ class_name EnemyBaller
 func _ready() -> void:
 	team = 1
 	super._ready()
+	EnemyTeam.register(self)
 
 const _POS_NAMES := ["PG", "SG", "SF", "PF", "C"]
 

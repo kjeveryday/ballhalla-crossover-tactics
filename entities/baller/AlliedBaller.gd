@@ -5,6 +5,7 @@ class_name AlliedBaller
 func _ready() -> void:
 	team = 0
 	super._ready()
+	AlliedTeam.register(self)
 
 const _POS_NAMES := ["PG", "SG", "SF", "PF", "C"]
 

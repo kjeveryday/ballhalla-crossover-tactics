@@ -1,0 +1,9 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scenes/test/TestEnemyAI.gd" id="1_testenemyai"]
+[ext_resource type="PackedScene" path="res://debug/GridOverlay.tscn" id="2_gridoverlay"]
+
+[node name="TestEnemyAI" type="Node2D"]
+script = ExtResource("1_testenemyai")
+
+[node name="GridOverlay" parent="." instance=ExtResource("2_gridoverlay")]

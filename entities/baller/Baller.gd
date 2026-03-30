@@ -34,3 +34,17 @@ func place_on_grid(col: int, row: int) -> void:
 	grid_col = col
 	grid_row = row
 	position = GridManager.grid_to_world(col, row)
+
+func can_act() -> bool:
+	return is_active and not is_exhausted
+
+func drain_stamina(amount: int) -> void:
+	current_stamina = max(0, current_stamina - amount)
+	if current_stamina == 0:
+		is_exhausted = true
+		print("[STAM] %s is exhausted!" % stats.display_name)
+
+func heal_stamina(amount: int) -> void:
+	if is_exhausted:
+		return
+	current_stamina = min(stats.max_stamina, current_stamina + amount)
