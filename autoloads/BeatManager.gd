@@ -69,7 +69,7 @@ func _apply_idle_recovery() -> void:
 	StaminaSystem.apply_idle_recovery()
 
 func _expire_active_play() -> void:
-	pass  # Step 4 (play call): deactivate play if unused
+	PlayManager.expire_active_play()
 
 func _check_double_team_triggers() -> void:
 	GravitySystem.check_double_team_triggers()

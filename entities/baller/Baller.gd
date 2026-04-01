@@ -22,7 +22,8 @@ var is_in_motion: bool = false
 var move_destination: Vector2i = Vector2i(-1, -1)
 var beats_to_destination: int = 0
 
-var guard_assignment = null   # Baller — set by EnemyAI (Step 11)
+var guard_assignment = null       # Baller — set by EnemyAI (Step 11)
+var screen_recovery_timer: int = 0  # Beats until re-assignment after screen
 
 func _ready() -> void:
 	if stats != null:

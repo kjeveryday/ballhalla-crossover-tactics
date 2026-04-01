@@ -17,6 +17,12 @@ func initialize_assignments() -> void:
 # --- Enemy Movement (beat step ⑥) ---
 
 func update_enemy_movement() -> void:
+	# Decrement screen recovery timers — re-assign guard when timer expires
+	for b in AlliedTeam.get_active_ballers():
+		if b.screen_recovery_timer > 0:
+			b.screen_recovery_timer -= 1
+			if b.screen_recovery_timer == 0:
+				_reassign_unguarded(b)
 	for enemy in EnemyTeam.get_active_ballers():
 		var target: Node = enemy.guard_assignment
 		if target == null or not target.is_active:
@@ -52,6 +58,14 @@ func _move_one_step_toward(enemy: Node, target: Node) -> void:
 		next_row += sign(dr)
 	if GridManager.get_cell(next_col, next_row) != null:
 		enemy.place_on_grid(next_col, next_row)
+
+func _reassign_unguarded(target: Node) -> void:
+	for enemy in EnemyTeam.get_active_ballers():
+		if enemy.guard_assignment == null:
+			enemy.guard_assignment = target
+			print("[AI] %s re-assigned to guard %s (screen expired)" % [
+				enemy.stats.display_name, target.stats.display_name])
+			break
 
 # --- Enemy Actions (beat step ⑦) ---
 

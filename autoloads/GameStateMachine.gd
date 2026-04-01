@@ -25,14 +25,14 @@ enum BattleState {
 # Any transition not listed here will print a warning.
 const VALID_TRANSITIONS := {
 	BattleState.IDLE:               [BattleState.OFFENSE_START],
-	BattleState.OFFENSE_START:      [BattleState.SELECTING_BALLER],
+	BattleState.OFFENSE_START:      [BattleState.SELECTING_BALLER, BattleState.DEFENSE_PHASE],
 	BattleState.SELECTING_BALLER:   [BattleState.SELECTING_ACTION],
 	BattleState.SELECTING_ACTION:   [BattleState.SELECTING_BALLER, BattleState.SELECTING_TARGET, BattleState.RESOLVING_ACTION],
 	BattleState.SELECTING_TARGET:   [BattleState.SELECTING_ACTION, BattleState.RESOLVING_ACTION],
 	BattleState.RESOLVING_ACTION:   [BattleState.SELECTING_BALLER, BattleState.SHOT_RESOLVING, BattleState.DEFENSE_PHASE, BattleState.QUARTER_END],
 	BattleState.SHOT_RESOLVING:     [BattleState.REBOUND_RESOLVING, BattleState.DEFENSE_PHASE],
 	BattleState.REBOUND_RESOLVING:  [BattleState.SELECTING_BALLER, BattleState.DEFENSE_PHASE],
-	BattleState.DEFENSE_PHASE:      [BattleState.OFFENSE_START, BattleState.QUARTER_END],
+	BattleState.DEFENSE_PHASE:      [BattleState.OFFENSE_START, BattleState.QUARTER_END, BattleState.HALFTIME, BattleState.MATCH_END],
 	BattleState.QUARTER_END:        [BattleState.OFFENSE_START, BattleState.HALFTIME, BattleState.MATCH_END],
 	BattleState.HALFTIME:           [BattleState.OFFENSE_START],
 	BattleState.MATCH_END:          [BattleState.IDLE],

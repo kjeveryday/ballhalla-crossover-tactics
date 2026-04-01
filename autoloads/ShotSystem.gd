@@ -5,9 +5,6 @@ extends Node
 
 const DEEP_PENALTY: float = 0.16
 
-# Temporary score tracking — QuarterManager replaces this in Step 14.
-var allied_score: int = 0
-
 signal shot_made(shooter, points: int)
 signal shot_missed(shooter)
 signal rebound_won(baller, is_offensive: bool)
@@ -22,18 +19,25 @@ func attempt_shot(shooter: Node) -> void:
 
 	var zone: int = GridManager.get_zone(shooter.grid_col, shooter.grid_row)
 	var base_pct: float = _get_base_shot_pct(shooter, zone)
+	var play_bonus: float = PlayManager.consume_shot_bonus()
+	var no_stamina: bool = PlayManager.consume_no_stamina_shot()
 	var defense_mod: float = _get_defense_modifier(shooter)
-	var final_pct: float = clamp(base_pct + defense_mod, 0.05, 0.95)
+	var final_pct: float = clamp(base_pct + defense_mod + play_bonus, 0.05, 0.95)
 
-	print("[SHOT] %s shooting from %s — base %.0f%% defense %+.0f%% final %.0f%%" % [
+	print("[SHOT] %s shooting from %s — base %.0f%% defense %+.0f%% play +%.0f%% final %.0f%%%s" % [
 		shooter.stats.display_name,
 		GridManager.CourtZone.keys()[zone],
-		base_pct * 100, defense_mod * 100, final_pct * 100
+		base_pct * 100, defense_mod * 100, play_bonus * 100, final_pct * 100,
+		" (free stamina)" if no_stamina else ""
 	])
 
 	shooter.acted_this_beat = true
+	if not no_stamina:
+		var shot_cost: int = StaminaSystem.get_stamina_cost(shooter, 10)
+		shooter.drain_stamina(shot_cost)
 	StaminaSystem.record_action(shooter)
 	BeatManager.spend_action("shoot")
+	PlayManager.on_action_resolved("shoot")
 	GameStateMachine.transition_to(GameStateMachine.BattleState.SHOT_RESOLVING)
 
 	var roll: float = randf()
@@ -76,14 +80,13 @@ func _get_defense_modifier(shooter: Node) -> float:
 # --- Outcomes ---
 
 func _handle_made_shot(shooter: Node, zone: int) -> void:
-	var points: int = 3 if zone >= GridManager.CourtZone.THREE_POINT else 2
-	allied_score += points
+	var base_points: int = 3 if zone >= GridManager.CourtZone.THREE_POINT else 2
+	var points: int = HypeManager.compute_shot_value(base_points)
 	shooter.has_ball = false
 	HypeManager.gain_hype(shooter, 20.0)
-	print("[SHOT] MADE! +%d pts — allied score: %d" % [points, allied_score])
+	print("[SHOT] MADE! +%d pts" % points)
 	shot_made.emit(shooter, points)
-	# Possession ends — QuarterManager handles full flow in Step 14
-	GameStateMachine.transition_to(GameStateMachine.BattleState.OFFENSE_START)
+	QuarterManager.add_allied_score(points)
 
 func _handle_missed_shot(shooter: Node) -> void:
 	print("[SHOT] MISSED by %s" % shooter.stats.display_name)
@@ -108,8 +111,7 @@ func _resolve_rebound(shooter: Node) -> void:
 	else:
 		print("[REBOUND] Defensive — possession ends")
 		rebound_won.emit(null, false)
-		# Full possession-end flow in Step 14
-		GameStateMachine.transition_to(GameStateMachine.BattleState.OFFENSE_START)
+		QuarterManager.end_possession()
 
 func _find_best_rebounder() -> Node:
 	var best: Node = null
