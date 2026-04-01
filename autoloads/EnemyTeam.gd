@@ -18,5 +18,11 @@ func get_active_ballers() -> Array:
 			result.append(b)
 	return result
 
+func get_combined_offensive_rating() -> float:
+	var total: float = 0.0
+	for b in get_active_ballers():
+		total += b.stats.offensive_rating
+	return total
+
 func clear() -> void:
 	ballers.clear()

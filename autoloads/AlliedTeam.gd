@@ -25,5 +25,20 @@ func get_ball_carrier():
 			return b
 	return null
 
+func get_combined_defensive_rating() -> float:
+	var total: float = 0.0
+	for b in get_active_ballers():
+		total += b.stats.defensive_rating
+	return total
+
+func get_avg_stamina_pct() -> float:
+	var active: Array = get_active_ballers()
+	if active.is_empty():
+		return 1.0
+	var total: float = 0.0
+	for b in active:
+		total += float(b.current_stamina) / float(b.stats.max_stamina)
+	return total / active.size()
+
 func clear() -> void:
 	ballers.clear()
