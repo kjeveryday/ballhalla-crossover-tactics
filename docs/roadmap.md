@@ -293,3 +293,4 @@ Track here instead of fixing now. Revisit after Phase 3.
 | `grid-cell-types` | — | 2026-05-17 | GridCell.passable + movement_cost added; is_out_of_bounds removed; BFS filters impassable; GridCellConfig resource created. D1 resolved: 9×12 final. |
 | `movement-range-highlight` | — | 2026-05-17 | TargetOverlay show_move_range/show_cut_range/preview_move_range all use AbilitySystem.get_move_range; show_move_range switches to mark_reachable_cells for BFS caching. |
 | `true-pathfinding` | — | 2026-05-17 | MovementSystem._paths stores BFS routes; AbilitySystem calls set_path before continue_movement; EnemyAI._move_one_step_toward uses BFS per beat. D2 resolved: one step per beat. |
+| `path-preview` | — | 2026-05-17 | TargetOverlay shows BFS path dots + destination ring on hover; stale-cache guard handles enemy BFS wipe race. |

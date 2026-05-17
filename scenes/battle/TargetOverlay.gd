@@ -12,6 +12,7 @@ enum Mode { NONE, CELLS, CUT_CELLS, BALLERS, PREVIEW_ENEMIES, PREVIEW_CELLS }
 var _mode: Mode = Mode.NONE
 var _highlight_cells: Array = []   # Array of Vector2i (col, row)
 var _highlight_ballers: Array = [] # Array of Baller nodes
+var _hovered_path: Array[GridManager.GridCell] = []  # BFS path to hovered cell
 
 const C_MOVE_FILL         := Color(0.15, 0.55, 1.00, 0.28)
 const C_MOVE_EDGE         := Color(0.30, 0.70, 1.00, 0.85)
@@ -22,6 +23,8 @@ const C_ALLY_FILL         := Color(0.10, 0.90, 0.40, 0.18)
 const C_PREVIEW_ENEMY     := Color(1.0, 0.45, 0.1, 0.35)
 const C_PREVIEW_ENEMY_EDGE:= Color(1.0, 0.55, 0.15, 0.80)
 const C_PREVIEW_CELL      := Color(0.15, 0.55, 1.00, 0.18)
+const C_PATH_DOT          := Color(1.0, 1.0, 1.0, 0.55)
+const C_PATH_RING         := Color(1.0, 1.0, 1.0, 0.80)
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
@@ -29,6 +32,7 @@ func show_move_range(baller: Node) -> void:
 	_mode = Mode.CELLS
 	_highlight_cells.clear()
 	_highlight_ballers.clear()
+	_hovered_path = []
 
 	var move_range: int = AbilitySystem.get_move_range(baller)
 	GridManager.mark_reachable_cells(baller.grid_col, baller.grid_row, move_range)
@@ -110,6 +114,7 @@ func clear() -> void:
 	_mode = Mode.NONE
 	_highlight_cells.clear()
 	_highlight_ballers.clear()
+	_hovered_path = []
 	set_process_unhandled_input(false)
 	queue_redraw()
 
@@ -124,6 +129,16 @@ func _draw() -> void:
 			var rect := Rect2(world.x - cs * 0.5, world.y - cs * 0.5, cs, cs)
 			draw_rect(rect, C_MOVE_FILL)
 			draw_rect(rect, C_MOVE_EDGE, false, 2.0)
+		# Step dots — skip index 0 (baller's current cell)
+		for i in range(1, _hovered_path.size()):
+			var step: GridManager.GridCell = _hovered_path[i]
+			var w: Vector2 = GridManager.grid_to_world(step.col, step.row)
+			draw_circle(w, cs * 0.14, C_PATH_DOT)
+		# Destination ring on top of final step
+		if not _hovered_path.is_empty():
+			var dest: GridManager.GridCell = _hovered_path.back()
+			var w: Vector2 = GridManager.grid_to_world(dest.col, dest.row)
+			draw_arc(w, cs * 0.22, 0.0, TAU, 32, C_PATH_RING, 2.0)
 
 	elif _mode == Mode.CUT_CELLS:
 		for cell_pos in _highlight_cells:
@@ -168,6 +183,22 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		emit_signal("cancelled")
 		return
+
+	if event is InputEventMouseMotion and _mode == Mode.CELLS:
+		var local_pos: Vector2 = get_local_mouse_position()
+		var grid_pos: Vector2i = GridManager.world_to_grid(local_pos)
+		if grid_pos != Vector2i(-1, -1) and _highlight_cells.has(grid_pos):
+			var path: Array[GridManager.GridCell] = GridManager.get_path_to_cell(grid_pos.x, grid_pos.y)
+			# Validate destination — stale BFS cache (wiped by enemy move) returns a
+			# path that doesn't reach the intended cell; discard it silently.
+			if not path.is_empty() and path.back().col == grid_pos.x and path.back().row == grid_pos.y:
+				_hovered_path = path
+			else:
+				_hovered_path = []
+		else:
+			_hovered_path = []
+		queue_redraw()
+		return  # do NOT call set_input_as_handled()
 
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 		# Mouse pos in court-space (this node is a child of Court at (0,0))
