@@ -291,3 +291,4 @@ Track here instead of fixing now. Revisit after Phase 3.
 | `turnover-fix` | — | 2026-05-17 | Already fully implemented: has_ball cleared, turnover_occurred emitted, end_possession called, floating text wired in BattleDemo |
 | `shot-clock-enforcement` | — | 2026-05-17 | ShotClock emits shot_clock_expired; BeatManager routes to _handle_turnover. D3 resolved: clock is real. |
 | `grid-cell-types` | — | 2026-05-17 | GridCell.passable + movement_cost added; is_out_of_bounds removed; BFS filters impassable; GridCellConfig resource created. D1 resolved: 9×12 final. |
+| `movement-range-highlight` | — | 2026-05-17 | TargetOverlay show_move_range/show_cut_range/preview_move_range all use AbilitySystem.get_move_range; show_move_range switches to mark_reachable_cells for BFS caching. |
