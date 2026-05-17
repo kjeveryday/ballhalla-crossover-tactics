@@ -106,6 +106,12 @@ func _build_scene() -> void:
 	_court.position = COURT_OFFSET
 	add_child(_court)
 
+	# Permanent grid lines — always visible cell borders
+	var court_grid := Node2D.new()
+	court_grid.name = "CourtGrid"
+	court_grid.set_script(load("res://scenes/battle/CourtGrid.gd"))
+	_court.add_child(court_grid)
+
 	# Zone overlay (press D to cycle debug mode)
 	_zone_overlay = load("res://debug/GridOverlay.tscn").instantiate()
 	_zone_overlay.visible = false
@@ -342,7 +348,11 @@ func _wire_signals() -> void:
 	_action_menu.action_chosen.connect(_on_action_chosen)
 	_action_menu.submenu_action_chosen.connect(_on_submenu_action_chosen)
 	_action_menu.action_hovered.connect(_on_action_hovered)
-	_action_menu.action_unhovered.connect(func(): _target_overlay.clear_preview())
+	_action_menu.action_unhovered.connect(func():
+		if _ui_state == UIState.BALLER_SELECTED:
+			_target_overlay.show_move_range(_selected_baller())
+		else:
+			_target_overlay.clear_preview())
 
 	# Enemy info panel signals
 	_enemy_info_panel.closed.connect(func(): pass)  # panel self-hides; no state change needed
@@ -368,9 +378,9 @@ func _set_ui_state(new_state: UIState) -> void:
 			_action_menu.hide_menu()
 			_target_overlay.clear()
 		UIState.BALLER_SELECTED:
-			_target_overlay.clear()
 			_enemy_info_panel.hide_panel()
 			var sel := _selected_baller()
+			_target_overlay.show_move_range(sel)
 			var screen_pos: Vector2 = _court.position + sel.position
 			_action_menu.show_for_baller(sel, screen_pos, _undo_available)
 		UIState.TARGET_MOVE:
@@ -600,7 +610,7 @@ func _on_submenu_action_chosen(action_id: String) -> void:
 # ─────────────────────────────────────────────
 
 func _on_target_cell_clicked(col: int, row: int) -> void:
-	if _ui_state == UIState.TARGET_MOVE:
+	if _ui_state == UIState.TARGET_MOVE or _ui_state == UIState.BALLER_SELECTED:
 		_capture_undo_snapshot(_selected_baller())
 		AbilitySystem.initiate_move(_selected_baller(), Vector2i(col, row))
 		_refresh_status()
@@ -632,7 +642,7 @@ func _on_action_hovered(action_id: String) -> void:
 	var sel := _selected_baller()
 	match action_id:
 		"move":
-			_target_overlay.preview_move_range(sel)
+			pass  # Move range already showing interactively in BALLER_SELECTED — no-op
 		"cut":
 			_target_overlay.preview_cut_range(sel)
 		"pass":
@@ -747,9 +757,8 @@ func _input(event: InputEvent) -> void:
 						_action_menu.hide_menu()
 					get_viewport().set_input_as_handled()
 					return
-			# Clicked away from any baller → close menu
-			if _ui_state == UIState.BALLER_SELECTED:
-				_set_ui_state(UIState.IDLE)
+			# Clicks on non-baller/non-enemy court cells are handled by TargetOverlay
+			# (in BALLER_SELECTED, cancelled signal fires → _on_target_cancelled → IDLE)
 		return
 
 	if not event is InputEventKey or not event.pressed:

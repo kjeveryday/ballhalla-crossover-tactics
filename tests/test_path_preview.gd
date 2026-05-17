@@ -53,7 +53,7 @@ class FakeGridManager:
 # ── Setup ─────────────────────────────────────────────────────────────────────
 
 var _overlay: Node = null  # TargetOverlay instance
-var _TargetOverlayScene: PackedScene = preload("res://scenes/battle/TargetOverlay.gd")
+var _TargetOverlayScene: GDScript = preload("res://scenes/battle/TargetOverlay.gd")
 
 func _ready() -> void:
 	print("=== test_path_preview: Path Preview Mechanic ===")
