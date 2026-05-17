@@ -40,6 +40,9 @@ func end_beat() -> void:
 	_apply_idle_recovery()
 	_expire_active_play()
 	ShotClock.decrement_beat()
+	if ShotClock.time_remaining == 0 and current_beat < BEATS_PER_POSSESSION:
+		_trigger_shot_clock_violation()
+		return
 	if current_beat >= BEATS_PER_POSSESSION:
 		print("[BEAT] Possession ended after beat %d" % current_beat)
 		possession_ended.emit()
@@ -73,3 +76,11 @@ func _expire_active_play() -> void:
 
 func _check_double_team_triggers() -> void:
 	GravitySystem.check_double_team_triggers()
+
+func _trigger_shot_clock_violation() -> void:
+	print("[BEAT] Shot clock expired — forced turnover")
+	var carrier: Node = AlliedTeam.get_ball_carrier()
+	if carrier != null:
+		AbilitySystem._handle_turnover(carrier)
+	else:
+		possession_ended.emit()

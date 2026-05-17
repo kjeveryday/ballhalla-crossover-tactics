@@ -31,7 +31,14 @@ class GridCell:
 	var row: int
 	var zone: CourtZone
 	var occupant = null        # Baller node or null
-	var is_out_of_bounds: bool = false
+	var passable: bool = true  # false = impassable (court boundary or obstacle)
+	var movement_cost: int = 1 # base cost to enter this cell; elevated by screen gravity fields
+	# Pathfinding state — set by mark_reachable_cells(), cleared by reset_all_markers()
+	var reachable: bool = false
+	var attackable: bool = false
+	var hover: bool = false
+	var pf_distance: int = -1  # BFS distance from origin; -1 = not visited
+	var pf_root: GridCell = null  # parent cell in BFS tree; enables path reconstruction
 
 	func _init(c: int, r: int, z: CourtZone) -> void:
 		col = c
@@ -109,11 +116,64 @@ func get_cells_in_range(col: int, row: int, steps: int) -> Array[GridCell]:  # B
 		if dist < steps:
 			for neighbor in get_neighbors(c, r):
 				var key := Vector2i(neighbor.col, neighbor.row)
-				if not visited.has(key):
+				if not visited.has(key) and neighbor.passable:
 					visited[key] = true
 					queue.append([neighbor.col, neighbor.row, dist + 1])
 
 	return result
+
+func reset_all_markers() -> void:
+	# Clears all pathfinding and highlight state from every cell.
+	for c in range(GRID_COLS):
+		for r in range(GRID_ROWS):
+			var cell: GridCell = _grid[c][r]
+			cell.reachable  = false
+			cell.attackable = false
+			cell.hover      = false
+			cell.pf_distance = -1
+			cell.pf_root     = null
+
+func mark_reachable_cells(col: int, row: int, steps: int) -> void:
+	# BFS from (col, row) up to `steps` moves. Stores pf_distance + pf_root on
+	# every visited cell, then flags reachable = true on valid destinations
+	# (non-origin, within range, unoccupied). Call reset_all_markers() to clear.
+	reset_all_markers()
+	var origin: GridCell = get_cell(col, row)
+	if origin == null:
+		return
+	origin.pf_distance = 0
+
+	var visited: Dictionary = {}
+	var queue: Array = [origin]
+	visited[Vector2i(col, row)] = true
+
+	while not queue.is_empty():
+		var cell: GridCell = queue.pop_front()
+		if cell.pf_distance < steps:
+			for neighbor in get_neighbors(cell.col, cell.row):
+				var key := Vector2i(neighbor.col, neighbor.row)
+				if not visited.has(key) and neighbor.passable:
+					neighbor.pf_distance = cell.pf_distance + 1
+					neighbor.pf_root     = cell
+					visited[key]         = true
+					queue.append(neighbor)
+
+	for c in range(GRID_COLS):
+		for r in range(GRID_ROWS):
+			var cell: GridCell = _grid[c][r]
+			if cell.pf_distance > 0 and cell.pf_distance <= steps and cell.passable and cell.occupant == null:
+				cell.reachable = true
+
+func get_path_to_cell(to_col: int, to_row: int) -> Array:
+	# Reconstructs the path from the BFS origin to (to_col, to_row) by walking
+	# pf_root backpointers. Returns [origin, ..., destination] in order.
+	# Only valid after mark_reachable_cells() has been called.
+	var path: Array = []
+	var current: GridCell = get_cell(to_col, to_row)
+	while current != null:
+		path.push_front(current)
+		current = current.pf_root
+	return path
 
 func distance_to_rim(row: int) -> int:  # Manhattan to row 0 (rim is at row 0)
 	return row
@@ -133,3 +193,11 @@ func world_to_grid(world_pos: Vector2) -> Vector2i:  # World pos → (col, row),
 	if col < 0 or col >= GRID_COLS or row < 0 or row >= GRID_ROWS:
 		return Vector2i(-1, -1)
 	return Vector2i(col, row)
+
+func apply_cell_config(config: Resource) -> void:
+	# Applies a GridCellConfig override to a single cell. Call after _initialize_grid().
+	var cell := get_cell(config.col, config.row)
+	if cell == null:
+		return
+	cell.passable = config.passable
+	cell.movement_cost = config.movement_cost
