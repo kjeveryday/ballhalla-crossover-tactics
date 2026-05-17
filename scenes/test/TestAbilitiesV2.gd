@@ -135,11 +135,11 @@ func _test_talk_trash() -> void:
 
 func _test_talk_leadership() -> void:
 	_reset_all()
-	sf.current_hype = 20.0
-	var hype_before: float = sf.current_hype
+	sf.current_hype = 20
+	var hype_before: int = sf.current_hype
 	AbilitySystem.talk_leadership(pg, sf)
-	var expected: float = min(100.0, hype_before + 10.0 * (1.0 + sf.stats.hype_charge_rate))
-	_assert(abs(sf.current_hype - expected) < 0.01,
+	var expected: int = mini(100, hype_before + roundi(10.0 * (1.0 + sf.stats.hype_charge_rate)))
+	_assert(sf.current_hype == expected,
 		"Leadership: sf gains +10 hype (with charge rate)", expected, sf.current_hype)
 
 # --- Test 6: ISO talk drains -5 stamina from enemies within range 3 ---
@@ -237,7 +237,7 @@ func _reset_all() -> void:
 		b.is_exhausted = false
 		b.acted_this_beat = false
 		b.consecutive_actions = 0
-		b.current_hype = 0.0
+		b.current_hype = 0
 		b.screen_recovery_timer = 0
 	for e in EnemyTeam.get_active_ballers():
 		e.current_stamina = e.stats.max_stamina

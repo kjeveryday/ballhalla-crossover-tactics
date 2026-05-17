@@ -194,7 +194,7 @@ func world_to_grid(world_pos: Vector2) -> Vector2i:  # World pos → (col, row),
 		return Vector2i(-1, -1)
 	return Vector2i(col, row)
 
-func apply_cell_config(config: Resource) -> void:
+func apply_cell_config(config: GridCellConfig) -> void:
 	# Applies a GridCellConfig override to a single cell. Call after _initialize_grid().
 	var cell := get_cell(config.col, config.row)
 	if cell == null:

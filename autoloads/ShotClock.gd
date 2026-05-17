@@ -6,7 +6,7 @@ extends Node
 var time_remaining: int = 24
 
 signal clock_updated(seconds_left: int)
-signal shot_clock_expired()
+signal shot_clock_expired()  # Emitted on expiry; BeatManager polls time_remaining directly for enforcement. Connect here for UI effects (flashing clock etc).
 
 func start() -> void:
 	time_remaining = 24

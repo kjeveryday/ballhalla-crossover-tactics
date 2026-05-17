@@ -53,6 +53,8 @@ func place_on_grid(col: int, row: int) -> void:
 	var new_cell := GridManager.get_cell(col, row)
 	if new_cell != null:
 		new_cell.occupant = self
+	elif OS.is_debug_build():
+		push_warning("[Baller] place_on_grid(%d,%d): cell not found — GridManager may not be ready" % [col, row])
 
 func can_act() -> bool:
 	return is_active and not is_exhausted

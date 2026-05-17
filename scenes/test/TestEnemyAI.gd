@@ -105,13 +105,13 @@ func _test_enemy_movement() -> void:
 func _test_high_hype_aggression() -> void:
 	# Set team hype > 60% (> 300 of 500 max)
 	for b in AlliedTeam.get_active_ballers():
-		b.current_hype = 70.0  # 70 × 5 = 350 = 70% team hype
+		b.current_hype = 70  # 70 × 5 = 350 = 70% team hype
 	var steps_high: int = EnemyAI._get_aggression_steps(pg)
 	_assert(steps_high >= 2, "High hype (70%%) → aggression steps >= 2", ">=2", steps_high)
 
 	# Low hype
 	for b in AlliedTeam.get_active_ballers():
-		b.current_hype = 0.0
+		b.current_hype = 0
 	var steps_low: int = EnemyAI._get_aggression_steps(pg)
 	_assert(steps_low == 1, "Low hype (0%%) → aggression steps == 1", 1, steps_low)
 
@@ -120,9 +120,9 @@ func _test_high_hype_aggression() -> void:
 func _test_double_team_trigger() -> void:
 	GameStateMachine.transition_to(GameStateMachine.BattleState.OFFENSE_START)
 	for b in AlliedTeam.get_active_ballers():
-		b.current_hype = 0.0
+		b.current_hype = 0
 	# pg has gravity_base=5; add 40 hype → +2 bonus → gravity=7 = threshold
-	pg.current_hype = 40.0
+	pg.current_hype = 40
 	pg.gravity = GravitySystem.compute_gravity(pg)
 	_assert(pg.gravity >= GravitySystem.DOUBLE_TEAM_GRAVITY_THRESHOLD,
 		"PG gravity >= 7 with 40 hype", GravitySystem.DOUBLE_TEAM_GRAVITY_THRESHOLD, pg.gravity)
@@ -191,16 +191,16 @@ func _test_grab() -> void:
 func _test_trash_talk() -> void:
 	var enemy: Node = EnemyTeam.get_active_ballers()[0]
 	enemy.place_on_grid(4, 6)  # Within range 3 of sf at (4,6)
-	sf.current_hype = 50.0
-	pg.current_hype = 30.0
-	var hype_before: float = sf.current_hype
+	sf.current_hype = 50
+	pg.current_hype = 30
+	var hype_before: int = sf.current_hype
 	var tt_target: Node = EnemyAI._get_trash_talk_target(enemy)
 	if tt_target != null:
 		HypeManager.drain_hype(tt_target, 10.0)
 		_assert(tt_target == sf, "Trash Talk targets highest-hype baller in range")
-		_assert(sf.current_hype == hype_before - 10.0,
+		_assert(sf.current_hype == hype_before - 10,
 			"Trash Talk drains 10 hype",
-			hype_before - 10.0, sf.current_hype)
+			hype_before - 10, sf.current_hype)
 	else:
 		_assert(false, "Trash Talk target found (enemy adjacent to hype'd baller)")
 
@@ -208,7 +208,7 @@ func _test_trash_talk() -> void:
 
 func _test_low_hype_fewer_actions() -> void:
 	for b in AlliedTeam.get_active_ballers():
-		b.current_hype = 0.0
+		b.current_hype = 0
 	# Sample 50 rolls at low hype — average should be < 1.5 actions
 	var total: int = 0
 	for _i in range(50):
@@ -218,7 +218,7 @@ func _test_low_hype_fewer_actions() -> void:
 
 	# Sample at high hype — average should be >= 2.0
 	for b in AlliedTeam.get_active_ballers():
-		b.current_hype = 80.0
+		b.current_hype = 80
 	total = 0
 	for _i in range(50):
 		total += EnemyAI._roll_action_count()
