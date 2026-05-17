@@ -2,6 +2,10 @@ extends Node
 # MovementSystem — Autoload
 # Handles in-motion baller continuation (beat step ⑤).
 # Called by BeatManager._resolve_in_motion_ballers() each beat.
+# Grid state (grid_col/grid_row) updates instantly. baller_moved fires so
+# BattleDemo can tween baller.position as a visual-only follow-up.
+
+signal baller_moved(baller: Node, world_pos: Vector2)
 
 # Advance baller one step toward their destination.
 # Uses simple greedy pathfinding: move along the axis with larger delta.
@@ -22,7 +26,17 @@ func continue_movement(baller: Node) -> void:
 
 	var next: Vector2i = _pathfind_one_step(baller.grid_col, baller.grid_row, dest)
 	if GridManager.get_cell(next.x, next.y) != null:
-		baller.place_on_grid(next.x, next.y)
+		# Update grid state instantly; BattleDemo tweens the visual position
+		var old_cell := GridManager.get_cell(baller.grid_col, baller.grid_row)
+		if old_cell != null and old_cell.occupant == baller:
+			old_cell.occupant = null
+		baller.grid_col = next.x
+		baller.grid_row = next.y
+		var new_cell := GridManager.get_cell(next.x, next.y)
+		if new_cell != null:
+			new_cell.occupant = baller
+		var world_pos: Vector2 = GridManager.grid_to_world(next.x, next.y)
+		baller_moved.emit(baller, world_pos)
 		print("[MOVE] %s step → (%d, %d)" % [baller.stats.display_name, next.x, next.y])
 
 	# Arrived?

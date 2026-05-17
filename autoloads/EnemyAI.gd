@@ -57,7 +57,15 @@ func _move_one_step_toward(enemy: Node, target: Node) -> void:
 	else:
 		next_row += sign(dr)
 	if GridManager.get_cell(next_col, next_row) != null:
-		enemy.place_on_grid(next_col, next_row)
+		var old_cell := GridManager.get_cell(enemy.grid_col, enemy.grid_row)
+		if old_cell != null and old_cell.occupant == enemy:
+			old_cell.occupant = null
+		enemy.grid_col = next_col
+		enemy.grid_row = next_row
+		var new_cell := GridManager.get_cell(next_col, next_row)
+		if new_cell != null:
+			new_cell.occupant = enemy
+		MovementSystem.baller_moved.emit(enemy, GridManager.grid_to_world(next_col, next_row))
 
 func _reassign_unguarded(target: Node) -> void:
 	for enemy in EnemyTeam.get_active_ballers():
@@ -101,7 +109,7 @@ func _perform_action(enemy: Node) -> void:
 		"foul":
 			var t: Node = _get_foul_target(enemy)
 			if t:
-				t.drain_stamina(8)
+				StaminaSystem.drain(t, 8)
 				print("[AI] %s fouls %s (-8 stamina)" % [
 					enemy.stats.display_name, t.stats.display_name])
 		"grab":
