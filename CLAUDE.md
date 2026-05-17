@@ -154,8 +154,10 @@ point or design question, append this block after the question:
 
 ```
 Quick detours (say the command — we'll pick up where we left off after):
-  /testgame — launch Godot to manually test recent changes
+  /testgame          — launch Godot to manually test recent changes
   /adversarialreview — critic agent audits session code for gaps before proceeding
+  /whatsnext         — show roadmap position + numbered options without restarting
+  /closingtime       — wrap up the session, push commits, print summary
 ```
 
 **After a detour:** When the user returns (says "back to work", "done", "continue", or

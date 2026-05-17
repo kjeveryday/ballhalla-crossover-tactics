@@ -18,7 +18,7 @@ enum BallerPosition { PG = 0, SG = 1, SF = 2, PF = 3, C = 4 }
 @export var offensive_rating: int = 50
 @export var defensive_rating: int = 50
 @export var rebound_rating: int = 5
-@export var block_rating: int = 5
+@export var block_rating: int = 5  # Reserved for V2 — no consumer in V1
 
 @export_group("Resources")
 @export var max_stamina: int = 150

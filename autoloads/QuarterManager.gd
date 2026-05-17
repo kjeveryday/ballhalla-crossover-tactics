@@ -8,12 +8,33 @@ var allied_score: int = 0
 var enemy_score: int = 0
 var _is_defense_phase: bool = false
 
+# Continuation pattern (Step 21A) — stores a callback that resumes flow after
+# the player dismisses a TransitionScreen. Includes a 30-second safety timer.
+var _continuation: Callable = Callable()
+var _continuation_timer: SceneTreeTimer = null
+
 signal quarter_ended(quarter: int)
 signal match_ended(allied_score: int, enemy_score: int)
 signal score_changed(allied: int, enemy: int)
+signal defense_resolved(scored: bool, points: int, enemy_offense: float, allied_defense: float, stamina_factor: float)
+signal quarter_break_ready(quarter: int, allied: int, enemy: int)
+signal halftime_ready(allied: int, enemy: int)
 
 func _ready() -> void:
 	BeatManager.possession_ended.connect(_on_possession_ended)
+
+# Store a continuation and start the 30-second safety timer (Step 21A).
+func _store_continuation(c: Callable) -> void:
+	_continuation = c
+	_continuation_timer = get_tree().create_timer(30.0)
+	_continuation_timer.timeout.connect(continue_flow)
+
+func continue_flow() -> void:
+	if _continuation.is_valid():
+		var c: Callable = _continuation
+		_continuation = Callable()
+		_continuation_timer = null
+		c.call()
 
 # --- Entry points ---
 
@@ -56,10 +77,17 @@ func end_quarter() -> void:
 	elif current_quarter == 2:
 		current_quarter += 1
 		GameStateMachine.transition_to(GameStateMachine.BattleState.HALFTIME)
+		_store_continuation(func():
+			GameStateMachine.transition_to(GameStateMachine.BattleState.OFFENSE_START)
+			BeatManager.start_possession())
+		halftime_ready.emit(allied_score, enemy_score)
 	else:
 		current_quarter += 1
-		GameStateMachine.transition_to(GameStateMachine.BattleState.OFFENSE_START)
-		BeatManager.start_possession()
+		GameStateMachine.transition_to(GameStateMachine.BattleState.QUARTER_END)
+		_store_continuation(func():
+			GameStateMachine.transition_to(GameStateMachine.BattleState.OFFENSE_START)
+			BeatManager.start_possession())
+		quarter_break_ready.emit(current_quarter - 1, allied_score, enemy_score)
 
 func _check_overtime() -> void:
 	if allied_score == enemy_score:
@@ -84,19 +112,37 @@ func _resolve_defense_phase() -> void:
 	var enemy_offense: float = EnemyTeam.get_combined_offensive_rating()
 	var allied_defense: float = AlliedTeam.get_combined_defensive_rating()
 	var stamina_factor: float = AlliedTeam.get_avg_stamina_pct()
-	var threshold: float = (enemy_offense - allied_defense * stamina_factor) / 100.0
-	threshold = clamp(threshold, 0.1, 0.9)
+	var threshold: float = clamp(
+		(enemy_offense - allied_defense * stamina_factor) / 100.0, 0.1, 0.9)
 	print("[DEFENSE] Q%d — enemy offense %.0f vs allied defense %.0f (stamina %.0f%%) → %.0f%% enemy score chance" % [
 		current_quarter, enemy_offense, allied_defense,
 		stamina_factor * 100, threshold * 100])
-	if randf() < threshold:
-		var points: int = 3 if randf() > 0.7 else 2
+	var scored: bool = randf() < threshold
+	var points: int = 0
+	if scored:
+		points = 3 if randf() > 0.7 else 2
 		enemy_score += points
 		print("[DEFENSE] Enemy scores %d! Allied %d : Enemy %d" % [points, allied_score, enemy_score])
 		score_changed.emit(allied_score, enemy_score)
 	else:
 		print("[DEFENSE] Allied defense holds!")
+	_store_continuation(func(): _after_defense_screen())
+	defense_resolved.emit(scored, points, enemy_offense, allied_defense, stamina_factor)
+
+func _after_defense_screen() -> void:
 	end_possession()
+
+func apply_halftime_choice(choice: String) -> void:
+	match choice:
+		"rest_team":
+			for b in AlliedTeam.get_active_ballers():
+				b.current_stamina = b.stats.max_stamina
+				b.is_exhausted = false
+		"call_play":
+			PlayManager.active_play = PlayManager.PLAYBOOK["pick_and_roll"]
+			PlayManager.sequence_progress.clear()
+			PlayManager.play_called.emit("Pick and Roll (Halftime Adjustment)")
+	continue_flow()
 
 # --- Baller reset between possessions ---
 

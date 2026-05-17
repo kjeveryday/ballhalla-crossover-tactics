@@ -5,6 +5,8 @@ class_name ActionMenu
 
 signal action_chosen(action_id: String)
 signal submenu_action_chosen(action_id: String)
+signal action_hovered(action_id: String)
+signal action_unhovered()
 
 # ── Layout ──────────────────────────────────────
 const PANEL_W    := 162
@@ -26,6 +28,30 @@ const C_TEXT       := Color(0.92, 0.92, 0.92, 1.00)
 const C_TEXT_HOT   := Color(1.00, 0.85, 0.20, 1.00)  # yellow for active plays
 const C_TEXT_DIS   := Color(0.38, 0.38, 0.40, 1.00)
 const C_SEP        := Color(0.22, 0.28, 0.42, 0.80)
+const C_COST       := Color(0.55, 0.65, 0.55, 1.00)   # muted green for cost labels
+const C_COST_FREE  := Color(0.65, 0.75, 0.65, 1.00)   # lighter green for "free"
+
+# ── Stamina costs ────────────────────────────────
+const ACTION_COSTS := {
+	"move":      "10 STM",
+	"cut":       "15 STM",
+	"pass":      "10 STM",
+	"shoot":     "10 STM",
+	"screen":    "10 STM",
+	"trash_talk":"5 STM",
+	"leadership":"5 STM",
+	"iso_talk":  "8 STM",
+	"end_turn":  "free",
+	"playcall":  "1st action",
+}
+
+# ── Play descriptions ────────────────────────────
+const PLAY_DESCRIPTIONS := {
+	"play:pick_and_roll":  "+15% shot\nafter Screen → Cut → Pass",
+	"play:give_and_go":    "+10 hype to cutter\nafter Pass → Cut → Pass",
+	"play:iso":            "+20% shot\nafter ISO → Move",
+	"play:drive_and_kick": "+10% shot + free STM\nafter Cut → Pass",
+}
 
 # ── Internal nodes ───────────────────────────────
 var _main_panel  : Panel
@@ -33,7 +59,11 @@ var _talk_panel  : Panel
 var _play_panel  : Panel
 var _title_label : Label
 var _stats_label : Label
+var _play_desc_label: Label
 var _main_btns   : Dictionary = {}  # action_id → Button
+var _undo_btn    : Button
+# Cost labels indexed by action_id for disabled-state color updates
+var _cost_labels : Dictionary = {}
 
 var _baller: Node = null
 
@@ -48,10 +78,11 @@ func _ready() -> void:
 
 # ── Public API ───────────────────────────────────
 
-func show_for_baller(baller: Node, screen_pos: Vector2) -> void:
+func show_for_baller(baller: Node, screen_pos: Vector2, undo_available: bool = false) -> void:
 	_baller = baller
 	_update_availability()
 	_update_title()
+	_undo_btn.visible = undo_available
 	_main_panel.visible = true
 	_talk_panel.visible = false
 	_play_panel.visible = false
@@ -70,6 +101,7 @@ func show_talk_sub() -> void:
 func show_play_sub() -> void:
 	_main_panel.visible = false
 	_play_panel.visible = true
+	_play_desc_label.text = "Hover a play to see details"
 	_position_sub_panel(_play_panel)
 
 # ── Build main panel ─────────────────────────────
@@ -105,26 +137,33 @@ func _build_main_panel() -> void:
 
 	# Main action buttons
 	var actions := [
-		["move",     "Move  ▸",      C_TEXT],
-		["pass",     "Pass  ▸",      C_TEXT],
-		["shoot",    "Shoot",        C_TEXT],
-		["screen",   "Screen",       C_TEXT],
-		["talk",     "Talk  ▸",      C_TEXT],
-		["playcall", "Play Call  ▸", C_TEXT_HOT],
+		["move",     _btn_label("Move  ▸",      "[M]"),   C_TEXT,     "move"],
+		["cut",      _btn_label("Cut  ▸",       "[C]"),   C_TEXT,     "cut"],
+		["pass",     _btn_label("Pass  ▸",      "[P]"),   C_TEXT,     "pass"],
+		["shoot",    _btn_label("Shoot",        "[S]"),   C_TEXT,     "shoot"],
+		["screen",   _btn_label("Screen",       "[X]"),   C_TEXT,     "screen"],
+		["talk",     _btn_label("Talk  ▸",      "[T]"),   C_TEXT,     ""],
+		["playcall", _btn_label("Play Call  ▸", "[1-4]"), C_TEXT_HOT, "playcall"],
 	]
 	for entry in actions:
-		var btn := _make_btn(entry[1], entry[0], entry[2])
+		var btn := _make_btn(entry[1], entry[0], entry[2], entry[3])
 		vbox.add_child(btn)
 		_main_btns[entry[0]] = btn
 
 	vbox.add_child(_make_sep())
 
-	var end_btn := _make_btn("End Turn", "end_turn", C_TEXT)
+	var end_btn := _make_btn(_btn_label("End Turn", "[Spc]"), "end_turn", C_TEXT, "end_turn")
 	vbox.add_child(end_btn)
 	_main_btns["end_turn"] = end_btn
 
-	# Fit panel height to content
-	var h: float = PAD * 2 + TITLE_H + SEP_H * 2 + actions.size() * (BTN_H + 2) + BTN_H + 2
+	# Undo button — hidden by default, shown only when a move can be undone
+	_undo_btn = _make_btn(_btn_label("Undo Move", "[Ctrl+Z]"), "undo", C_TEXT, "")
+	_undo_btn.visible = false
+	vbox.add_child(_undo_btn)
+	_main_btns["undo"] = _undo_btn
+
+	# Fit panel height to content; include undo button height so panel expands cleanly
+	var h: float = PAD * 2 + TITLE_H + SEP_H * 2 + actions.size() * (BTN_H + 2) + (BTN_H + 2) * 2
 	_main_panel.custom_minimum_size = Vector2(PANEL_W, h)
 	_main_panel.size = Vector2(PANEL_W, h)
 
@@ -145,9 +184,9 @@ func _build_talk_panel() -> void:
 	vbox.add_child(_make_sep())
 
 	var talk_actions := [
-		["trash_talk",  "Trash Talk",    C_TEXT],
-		["leadership",  "Leadership  ▸", C_TEXT],
-		["iso_talk",    "ISO",           C_TEXT],
+		["trash_talk",  _btn_label("Trash Talk",    "[T]"), C_TEXT],
+		["leadership",  _btn_label("Leadership  ▸", "[L]"), C_TEXT],
+		["iso_talk",    _btn_label("ISO",           "[I]"), C_TEXT],
 	]
 	for entry in talk_actions:
 		vbox.add_child(_make_sub_btn(entry[1], entry[0], entry[2], false))
@@ -176,18 +215,36 @@ func _build_play_panel() -> void:
 	vbox.add_child(_make_sep())
 
 	var plays := [
-		["play:pick_and_roll",  "Pick & Roll",   C_TEXT_HOT],
-		["play:give_and_go",    "Give & Go",     C_TEXT_HOT],
-		["play:iso",            "ISO",           C_TEXT_HOT],
-		["play:drive_and_kick", "Drive & Kick",  C_TEXT_HOT],
+		["play:pick_and_roll",  _btn_label("Pick & Roll",  "[1]"), C_TEXT_HOT],
+		["play:give_and_go",    _btn_label("Give & Go",    "[2]"), C_TEXT_HOT],
+		["play:iso",            _btn_label("ISO",          "[3]"), C_TEXT_HOT],
+		["play:drive_and_kick", _btn_label("Drive & Kick", "[4]"), C_TEXT_HOT],
 	]
 	for entry in plays:
-		vbox.add_child(_make_sub_btn(entry[1], entry[0], entry[2], false))
+		var btn := _make_sub_btn(entry[1], entry[0], entry[2], false)
+		# Wire hover for play description
+		var play_id: String = entry[0]
+		btn.mouse_entered.connect(func():
+			if PLAY_DESCRIPTIONS.has(play_id):
+				_play_desc_label.text = PLAY_DESCRIPTIONS[play_id])
+		btn.mouse_exited.connect(func():
+			_play_desc_label.text = "Hover a play to see details")
+		vbox.add_child(btn)
 
 	vbox.add_child(_make_sep())
 	vbox.add_child(_make_sub_btn("◀ Back", "back_play", C_TEXT, true))
 
-	var h: float = PAD * 2 + 22 + SEP_H * 2 + plays.size() * (BTN_H + 2) + BTN_H + 2
+	# Play description tooltip label
+	vbox.add_child(_make_sep())
+	_play_desc_label = Label.new()
+	_play_desc_label.custom_minimum_size = Vector2(PANEL_W - PAD * 2, 36)
+	_play_desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD
+	_play_desc_label.add_theme_font_size_override("font_size", 11)
+	_play_desc_label.add_theme_color_override("font_color", Color(0.60, 0.65, 0.70))
+	_play_desc_label.text = "Hover a play to see details"
+	vbox.add_child(_play_desc_label)
+
+	var h: float = PAD * 2 + 22 + SEP_H * 3 + plays.size() * (BTN_H + 2) + BTN_H + 2 + 38
 	_play_panel.custom_minimum_size = Vector2(PANEL_W, h)
 	_play_panel.size = Vector2(PANEL_W, h)
 
@@ -196,12 +253,38 @@ func _build_play_panel() -> void:
 func _update_availability() -> void:
 	if _baller == null:
 		return
-	var has_ball: bool = _baller.has_ball
-	var is_first_action: bool = BeatManager.actions_remaining == BeatManager.ACTIONS_PER_BEAT
 
-	_set_btn_enabled("pass",     has_ball)
-	_set_btn_enabled("shoot",    has_ball)
-	_set_btn_enabled("playcall", is_first_action)
+	var has_ball: bool  = _baller.has_ball
+	var can_act: bool   = _baller.can_act()
+	var is_first: bool  = BeatManager.actions_remaining == BeatManager.ACTIONS_PER_BEAT
+
+	# Screen valid only if an enemy is guarding this baller
+	var has_screen_target: bool = false
+	for enemy in EnemyTeam.get_active_ballers():
+		if enemy.guard_assignment == _baller:
+			has_screen_target = true
+			break
+
+	# Leadership valid if any ally is alive and not exhausted
+	var has_leadership_target: bool = false
+	for b in AlliedTeam.get_active_ballers():
+		if b != _baller and not b.is_exhausted:
+			has_leadership_target = true
+			break
+
+	_set_btn_enabled("move",     can_act)
+	_set_btn_enabled("cut",      can_act)
+	_set_btn_enabled("pass",     can_act and has_ball)
+	_set_btn_enabled("shoot",    can_act and has_ball)
+	_set_btn_enabled("screen",   can_act and has_screen_target)
+	_set_btn_enabled("talk",     can_act)
+	_set_btn_enabled("playcall", can_act and is_first)
+	_set_btn_enabled("end_turn", true)
+
+	# If exhausted, disable everything
+	if not can_act:
+		for key in _main_btns.keys():
+			_set_btn_enabled(key, false)
 
 func _set_btn_enabled(action_id: String, enabled: bool) -> void:
 	if not _main_btns.has(action_id):
@@ -211,6 +294,15 @@ func _set_btn_enabled(action_id: String, enabled: bool) -> void:
 	var tc: Color = C_TEXT_DIS if not enabled else (C_TEXT_HOT if action_id == "playcall" else C_TEXT)
 	btn.add_theme_color_override("font_color", tc)
 	btn.add_theme_color_override("font_color_disabled", C_TEXT_DIS)
+	# Update cost label color
+	if _cost_labels.has(action_id):
+		var cost_lbl: Label = _cost_labels[action_id]
+		if not enabled:
+			cost_lbl.add_theme_color_override("font_color", C_TEXT_DIS)
+		else:
+			var cost_str: String = ACTION_COSTS.get(action_id, "")
+			var col: Color = C_COST_FREE if cost_str == "free" else C_COST
+			cost_lbl.add_theme_color_override("font_color", col)
 
 func _update_title() -> void:
 	if _baller == null:
@@ -220,7 +312,7 @@ func _update_title() -> void:
 		GridManager.get_zone(_baller.grid_col, _baller.grid_row)]
 	_stats_label.text = "HP %d/%d  Hype %d  [%s]" % [
 		_baller.current_stamina, _baller.stats.max_stamina,
-		int(_baller.current_hype), zone_name]
+		_baller.current_hype, zone_name]
 
 # ── Positioning ──────────────────────────────────
 
@@ -243,6 +335,9 @@ func _clamped(pos: Vector2, sz: Vector2) -> Vector2:
 	)
 
 # ── Widget factories ─────────────────────────────
+
+func _btn_label(text: String, shortcut: String) -> String:
+	return text.rpad(18) + shortcut
 
 func _make_panel() -> Panel:
 	var p := Panel.new()
@@ -275,7 +370,7 @@ func _make_sep() -> HSeparator:
 	sep.add_theme_stylebox_override("separator", style)
 	return sep
 
-func _make_btn(label: String, action_id: String, text_color: Color) -> Button:
+func _make_btn(label: String, action_id: String, text_color: Color, cost_id: String) -> Button:
 	var btn := Button.new()
 	btn.text = label
 	btn.custom_minimum_size = Vector2(PANEL_W - PAD * 2, BTN_H)
@@ -290,6 +385,23 @@ func _make_btn(label: String, action_id: String, text_color: Color) -> Button:
 	btn.add_theme_stylebox_override("pressed",  _btn_style(C_BTN_PRESS))
 	btn.add_theme_stylebox_override("disabled", _btn_style(C_BTN_DIS))
 	btn.pressed.connect(_on_main_pressed.bind(action_id))
+	btn.mouse_entered.connect(func(): action_hovered.emit(action_id))
+	btn.mouse_exited.connect(func(): action_unhovered.emit())
+
+	# Cost label (bottom-right corner of button)
+	if cost_id != "" and ACTION_COSTS.has(cost_id):
+		var cost_str: String = ACTION_COSTS[cost_id]
+		var cost_lbl := Label.new()
+		cost_lbl.text = cost_str
+		cost_lbl.add_theme_font_size_override("font_size", 10)
+		var col: Color = C_COST_FREE if cost_str == "free" else C_COST
+		cost_lbl.add_theme_color_override("font_color", col)
+		# Position at bottom-right of button content area
+		cost_lbl.position = Vector2(PANEL_W - PAD * 2 - 56, BTN_H - 13)
+		cost_lbl.mouse_filter = MOUSE_FILTER_IGNORE
+		btn.add_child(cost_lbl)
+		_cost_labels[action_id] = cost_lbl
+
 	return btn
 
 func _make_sub_btn(label: String, action_id: String, text_color: Color, muted: bool) -> Button:
@@ -305,6 +417,8 @@ func _make_sub_btn(label: String, action_id: String, text_color: Color, muted: b
 	btn.add_theme_stylebox_override("hover",   _btn_style(C_BTN_HOVER))
 	btn.add_theme_stylebox_override("pressed", _btn_style(C_BTN_PRESS))
 	btn.pressed.connect(_on_sub_pressed.bind(action_id))
+	btn.mouse_entered.connect(func(): action_hovered.emit(action_id))
+	btn.mouse_exited.connect(func(): action_unhovered.emit())
 	return btn
 
 func _btn_style(bg: Color) -> StyleBoxFlat:
@@ -334,7 +448,5 @@ func _on_sub_pressed(action_id: String) -> void:
 			_talk_panel.visible = false
 			_play_panel.visible = false
 			_main_panel.visible = true
-		"leadership":
-			submenu_action_chosen.emit(action_id)
 		_:
 			submenu_action_chosen.emit(action_id)

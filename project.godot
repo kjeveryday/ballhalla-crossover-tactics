@@ -11,13 +11,8 @@ config_version=5
 [application]
 
 config/name="Ballhalla: Crossover Tactics"
-config/features=PackedStringArray("4.5", "Forward Plus")
 run/main_scene="res://scenes/battle/BattleDemo.tscn"
-
-[display]
-
-window/size/viewport_width=816
-window/size/viewport_height=716
+config/features=PackedStringArray("4.4", "Forward Plus")
 
 [autoload]
 
@@ -37,3 +32,12 @@ ShotSystem="*res://autoloads/ShotSystem.gd"
 EnemyFormation="*res://autoloads/EnemyFormation.gd"
 GravitySystem="*res://autoloads/GravitySystem.gd"
 EnemyAI="*res://autoloads/EnemyAI.gd"
+
+[display]
+
+window/size/viewport_width=816
+window/size/viewport_height=716
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/gut/plugin.cfg")

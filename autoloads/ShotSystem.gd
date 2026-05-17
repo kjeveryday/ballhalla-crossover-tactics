@@ -34,7 +34,7 @@ func attempt_shot(shooter: Node) -> void:
 	shooter.acted_this_beat = true
 	if not no_stamina:
 		var shot_cost: int = StaminaSystem.get_stamina_cost(shooter, 10)
-		shooter.drain_stamina(shot_cost)
+		StaminaSystem.drain(shooter, shot_cost)
 	StaminaSystem.record_action(shooter)
 	BeatManager.spend_action("shoot")
 	PlayManager.on_action_resolved("shoot")

@@ -23,7 +23,8 @@ enum BattleState {
 
 # Valid transitions: Dictionary[BattleState, Array[BattleState]]
 # Any transition not listed here will print a warning.
-const VALID_TRANSITIONS := {
+# NOTE: var (not const) — Godot 4.5 disallows enum values as const dict keys.
+var VALID_TRANSITIONS := {
 	BattleState.IDLE:               [BattleState.OFFENSE_START],
 	BattleState.OFFENSE_START:      [BattleState.SELECTING_BALLER, BattleState.DEFENSE_PHASE],
 	BattleState.SELECTING_BALLER:   [BattleState.SELECTING_ACTION],
@@ -40,7 +41,7 @@ const VALID_TRANSITIONS := {
 }
 
 # TIMEOUT is reachable from any non-terminal state
-const TIMEOUT_ALLOWED_FROM := [
+var TIMEOUT_ALLOWED_FROM := [
 	BattleState.SELECTING_BALLER,
 	BattleState.SELECTING_ACTION,
 	BattleState.SELECTING_TARGET,
@@ -59,7 +60,8 @@ func transition_to(new_state: BattleState) -> void:
 	var valid_targets: Array = VALID_TRANSITIONS.get(old, [])
 	var timeout_ok: bool = new_state == BattleState.TIMEOUT and old in TIMEOUT_ALLOWED_FROM
 	if new_state not in valid_targets and not timeout_ok:
-		print("[STATE] WARNING: illegal transition %s → %s" % [old_name, new_name])
+		print("[STATE] ERROR: illegal transition %s → %s — blocked" % [old_name, new_name])
+		return
 
 	current_state = new_state
 	print("[STATE] %s → %s" % [old_name, new_name])

@@ -2,6 +2,8 @@ extends Node
 # StaminaSystem — Autoload
 # All stamina math routes through here. No stamina logic lives in Baller directly.
 
+signal stamina_changed(baller: Node, delta: int)
+
 const IDLE_RECOVERY: int = 8
 # Ball-hog penalty added on top of base cost depending on consecutive actions
 const BALL_HOG_PENALTIES: Array = [0, 5, 15, 30]
@@ -20,6 +22,16 @@ func _on_beat_started(_beat_num: int) -> void:
 # stat_bonus comes from the baller's stats resource; pos_bonus from POSITION_STAMINA_BONUS.
 func compute_max_stamina(stat_bonus: int, pos_bonus: int) -> int:
 	return 100 + (10 * stat_bonus) + (10 * pos_bonus)
+
+# Drains stamina from a baller and emits stamina_changed with a negative delta.
+func drain(baller: Node, amount: int) -> void:
+	baller.drain_stamina(amount)
+	stamina_changed.emit(baller, -amount)
+
+# Heals stamina on a baller and emits stamina_changed with a positive delta.
+func heal(baller: Node, amount: int) -> void:
+	baller.heal_stamina(amount)
+	stamina_changed.emit(baller, amount)
 
 # Returns stamina cost for an action, including ball-hog escalation.
 func get_stamina_cost(baller: Node, base_cost: int) -> int:
@@ -45,7 +57,7 @@ func record_action(acting_baller: Node) -> void:
 func apply_idle_recovery() -> void:
 	for b in AlliedTeam.get_active_ballers():
 		if not b.acted_this_beat and not b.is_exhausted:
-			b.heal_stamina(IDLE_RECOVERY)
+			heal(b, IDLE_RECOVERY)
 			print("[STAM] %s idle recovery +%d → %d/%d" % [
 				b.stats.display_name, IDLE_RECOVERY,
 				b.current_stamina, b.stats.max_stamina])

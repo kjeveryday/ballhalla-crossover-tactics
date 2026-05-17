@@ -294,3 +294,12 @@ Track here instead of fixing now. Revisit after Phase 3.
 | `movement-range-highlight` | — | 2026-05-17 | TargetOverlay show_move_range/show_cut_range/preview_move_range all use AbilitySystem.get_move_range; show_move_range switches to mark_reachable_cells for BFS caching. |
 | `true-pathfinding` | — | 2026-05-17 | MovementSystem._paths stores BFS routes; AbilitySystem calls set_path before continue_movement; EnemyAI._move_one_step_toward uses BFS per beat. D2 resolved: one step per beat. |
 | `path-preview` | — | 2026-05-17 | TargetOverlay shows BFS path dots + destination ring on hover; stale-cache guard handles enemy BFS wipe race. |
+| `stamina-signal` | — | 2026-05-17 | StaminaSystem.stamina_changed(baller, delta) declared; drain() and heal() both emit. HypeManager.hype_changed also carries delta: int. |
+| `floating-text` | — | 2026-05-17 | FloatingText (pooled, 8-node cap) + FloatingTextSpawner with spawn_score/miss/stamina/hype/event. Wired in BattleDemo. |
+| `baller-visuals` | — | 2026-05-17 | BallerInfoBar (name, ball tag, stamina bar, hype bar, action pips); AlliedBaller/EnemyBaller draw tokens with position colors. |
+| `movement-animations` | — | 2026-05-17 | BattleDemo tweens baller.position over 0.22s on baller_moved signal; _is_animating/_anim_count guard beat advancement. |
+| `enemy-info-panel` | — | 2026-05-17 | EnemyInfoPanel shows guard assignment, stamina, hype on click; hides on action. |
+| `action-menu-polish` | — | 2026-05-17 | ActionMenu click-driven panel with hover previews, submenu for Talk, disabled states, Undo button. |
+| `hud-overhaul` | — | 2026-05-17 | ScoreboardPanel, ActivePlayBanner, ShotClockBar, GuardDisplay, HypeMilestoneFX, ShotArcOverlay, BallIndicator all wired in BattleDemo. |
+| `transition-screens` | — | 2026-05-17 | TransitionScreen covers defense result, quarter break, halftime; ConfirmDialog guards end-beat-early. |
+| `game-flow-qol` | — | 2026-05-17 | LogPanel (toggle with ` or LOG button), ShortcutRef (? key), TurnSnapshot for undo, Ctrl+Z undo, Tab cycle, D overlay cycle. |

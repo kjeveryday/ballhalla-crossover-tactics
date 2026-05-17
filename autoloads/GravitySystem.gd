@@ -40,7 +40,7 @@ func _try_assign_double_team(target: Node) -> void:
 	var switcher: Node = _find_switch_candidate(target)
 	if switcher:
 		switcher.guard_assignment = target
-		switcher.drain_stamina(10)
+		StaminaSystem.drain(switcher, 10)
 		print("[GRAVITY] Double-team triggered on %s — %s switches" % [
 			target.stats.display_name, switcher.stats.display_name])
 		double_team_triggered.emit(target)

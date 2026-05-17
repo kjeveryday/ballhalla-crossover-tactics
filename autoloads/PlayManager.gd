@@ -33,10 +33,14 @@ func _ready() -> void:
 	_build_playbook()
 
 func _build_playbook() -> void:
+	# Sequences use "cut" when the expected move is toward the opponent's basket,
+	# and "move" when any lateral repositioning qualifies.
+	# AbilitySystem.initiate_move() emits "cut" when destination.y < current row,
+	# "move" otherwise — never both.
 	PLAYBOOK["pick_and_roll"]  = PlayCard.new("Pick and Roll",  ["screen", "cut", "pass"],  "shot_plus_15")
 	PLAYBOOK["give_and_go"]    = PlayCard.new("Give and Go",    ["pass", "cut", "pass"],     "hype_cutter_10")
-	PLAYBOOK["iso"]            = PlayCard.new("ISO",            ["iso", "move"],             "iso_shot_plus_20")
-	PLAYBOOK["drive_and_kick"] = PlayCard.new("Drive and Kick", ["move", "pass"],            "kick_shot_plus_10")
+	PLAYBOOK["iso"]            = PlayCard.new("ISO",            ["iso", "cut"],              "iso_shot_plus_20")
+	PLAYBOOK["drive_and_kick"] = PlayCard.new("Drive and Kick", ["cut", "pass"],             "kick_shot_plus_10")
 
 func call_play(play_key: String) -> void:
 	if not PLAYBOOK.has(play_key):

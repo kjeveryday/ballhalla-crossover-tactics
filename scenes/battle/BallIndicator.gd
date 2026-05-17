@@ -1,5 +1,7 @@
 extends Node2D
 # BallIndicator — follows the ball carrier and draws a basketball above them.
+# Step 17C adds _override_position to freeze the indicator during pass tweens.
+# Must be cleared on: pass_completed, shot_made, shot_missed, turnover_occurred, quarter_ended.
 
 const RADIUS: float = 9.0
 const BALL_COLOR    := Color(0.95, 0.50, 0.05)
@@ -9,7 +11,29 @@ const OUTLINE_COLOR := Color(0.20, 0.10, 0.00)
 # Offset: draw the ball above the baller token
 const Y_OFFSET: float = -28.0
 
+# When true, _process does not track the carrier — a tween or manual snap owns position.
+# Must be cleared on every possession-end event — see BattleDemo._wire_signals().
+var _override_position: bool = false
+
+func clear_override() -> void:
+	_override_position = false
+
+# Animate the ball from its current position to target_pos along a parabolic arc.
+func tween_to(target_pos: Vector2, duration: float) -> void:
+	_override_position = true
+	var start := position
+	var peak := Vector2((start.x + target_pos.x) * 0.5, min(start.y, target_pos.y) - 40.0)
+	var tween := create_tween()
+	tween.tween_property(self, "position", peak, duration * 0.5)\
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+	tween.tween_property(self, "position", target_pos, duration * 0.5)\
+		.set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
+	tween.finished.connect(func(): _override_position = false, CONNECT_ONE_SHOT)
+
 func _process(_delta: float) -> void:
+	if _override_position:
+		queue_redraw()
+		return
 	var carrier: Node = AlliedTeam.get_ball_carrier()
 	if carrier != null:
 		position = carrier.position + Vector2(0.0, Y_OFFSET)

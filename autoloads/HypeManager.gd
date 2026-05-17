@@ -2,11 +2,18 @@ extends Node
 # HypeManager — Autoload
 # Hype gain/drain, last-beat bonus, team hype scoring multiplier.
 
-signal hype_changed(baller)
+signal hype_changed(baller: Node, delta: int)
+signal hype_milestone(level: int)
+
+# Milestone thresholds — reset each possession so they only trigger once per possession.
+var _milestone_triggered: Dictionary = {
+	100: false, 200: false, 300: false, 400: false, 500: false
+}
 
 func _ready() -> void:
 	# Last-beat bonus: any action taken in beat 8 gives entire team +15 hype
 	BeatManager.action_committed.connect(_on_action_committed)
+	BeatManager.possession_ended.connect(_reset_milestones)
 
 func _on_action_committed(_action_type: String) -> void:
 	if BeatManager.current_beat == BeatManager.BEATS_PER_POSSESSION:
@@ -16,18 +23,20 @@ func _on_action_committed(_action_type: String) -> void:
 
 func gain_hype(baller: Node, base_amount: float) -> void:
 	var rate: float = 1.0 + baller.stats.hype_charge_rate
-	var gained: float = base_amount * rate
-	baller.current_hype = min(100.0, baller.current_hype + gained)
-	hype_changed.emit(baller)
-	print("[HYPE] %s +%.1f → %.1f" % [baller.stats.display_name, gained, baller.current_hype])
+	var gained: int = roundi(base_amount * rate)
+	baller.current_hype = min(100, baller.current_hype + gained)
+	hype_changed.emit(baller, gained)
+	print("[HYPE] %s +%d → %d" % [baller.stats.display_name, gained, baller.current_hype])
+	_check_milestones()
 
 func drain_hype(baller: Node, amount: float) -> void:
-	baller.current_hype = max(0.0, baller.current_hype - amount)
-	hype_changed.emit(baller)
-	print("[HYPE] %s -%.1f → %.1f" % [baller.stats.display_name, amount, baller.current_hype])
+	var drained: int = roundi(amount)
+	baller.current_hype = max(0, baller.current_hype - drained)
+	hype_changed.emit(baller, -drained)
+	print("[HYPE] %s -%d → %d" % [baller.stats.display_name, drained, baller.current_hype])
 
-func get_team_hype() -> float:
-	var total: float = 0.0
+func get_team_hype() -> int:
+	var total: int = 0
 	for b in AlliedTeam.get_active_ballers():
 		total += b.current_hype
 	return total  # Max 500 (5 × 100)
@@ -43,3 +52,16 @@ func compute_shot_value(base_points: int) -> int:
 # Called when an enemy steal attempt fails (ball carrier gets +8 hype).
 func on_steal_failed(ball_carrier: Node) -> void:
 	gain_hype(ball_carrier, 8.0)
+
+func _check_milestones() -> void:
+	var total: int = get_team_hype()
+	for threshold in _milestone_triggered.keys():
+		if total >= threshold and not _milestone_triggered[threshold]:
+			_milestone_triggered[threshold] = true
+			hype_milestone.emit(threshold)
+			print("[HYPE] Milestone reached: %d!" % threshold)
+			break  # Only one milestone per gain call
+
+func _reset_milestones() -> void:
+	for key in _milestone_triggered.keys():
+		_milestone_triggered[key] = false
