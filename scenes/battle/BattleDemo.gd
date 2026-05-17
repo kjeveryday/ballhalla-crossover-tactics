@@ -510,7 +510,10 @@ func _execute_undo() -> void:
 	MovementSystem.set_path(b, [])  # Clear any in-flight BFS path
 	b.place_on_grid(snap.col, snap.row)
 	b.position            = snap.position
-	b.current_stamina     = snap.stamina
+	var stamina_delta: int = snap.stamina - b.current_stamina
+	b.current_stamina = snap.stamina
+	if stamina_delta != 0:
+		StaminaSystem.stamina_changed.emit(b, stamina_delta)
 	b.acted_this_beat     = false
 	b.is_in_motion        = false
 	b.move_destination    = Vector2i(-1, -1)
@@ -630,6 +633,10 @@ func _on_action_hovered(action_id: String) -> void:
 	match action_id:
 		"move":
 			_target_overlay.preview_move_range(sel)
+		"cut":
+			_target_overlay.preview_cut_range(sel)
+		"pass":
+			_target_overlay.preview_pass_targets(sel)
 		"screen":
 			_target_overlay.preview_screen_target(sel)
 		"trash_talk":
@@ -660,8 +667,11 @@ func _on_pass_completed(from_pos: Vector2, to_pos: Vector2) -> void:
 
 func _on_single_anim_done() -> void:
 	_anim_count -= 1
-	if _anim_count <= 0:
+	if _anim_count == 0:
 		_finish_animation()
+	elif _anim_count < 0:
+		push_warning("[ANIM] _anim_count underflow — reset to 0")
+		_anim_count = 0
 
 func _finish_animation() -> void:
 	_anim_count = 0
@@ -747,6 +757,10 @@ func _input(event: InputEvent) -> void:
 
 	# Let modal dialogs and shortcut ref handle their own keys via _unhandled_input
 	if _confirm_dialog.visible or _shortcut_ref.visible:
+		return
+
+	# Suppress gameplay shortcuts while a transition screen is active
+	if _transition_screen.visible:
 		return
 
 	match event.keycode:

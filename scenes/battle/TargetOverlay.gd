@@ -106,6 +106,29 @@ func preview_move_range(baller: Node) -> void:
 	set_process_unhandled_input(false)
 	queue_redraw()
 
+func preview_cut_range(baller: Node) -> void:
+	_mode = Mode.PREVIEW_CELLS
+	_highlight_cells.clear()
+	var move_range: int = AbilitySystem.get_move_range(baller)
+	var cells := GridManager.get_cells_in_range(baller.grid_col, baller.grid_row, move_range)
+	for cell in cells:
+		if cell.row >= baller.grid_row:
+			continue
+		if cell.occupant != null and cell.occupant != baller:
+			continue
+		_highlight_cells.append(Vector2i(cell.col, cell.row))
+	set_process_unhandled_input(false)
+	queue_redraw()
+
+func preview_pass_targets(baller: Node) -> void:
+	_mode = Mode.PREVIEW_CELLS
+	_highlight_cells.clear()
+	for b in AlliedTeam.get_active_ballers():
+		if b != baller:
+			_highlight_cells.append(Vector2i(b.grid_col, b.grid_row))
+	set_process_unhandled_input(false)
+	queue_redraw()
+
 func clear_preview() -> void:
 	if _mode == Mode.PREVIEW_ENEMIES or _mode == Mode.PREVIEW_CELLS:
 		clear()

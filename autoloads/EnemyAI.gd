@@ -123,7 +123,7 @@ func _perform_action(enemy: Node) -> void:
 		"grab":
 			var t: Node = _get_grab_target(enemy)
 			if t:
-				t.beats_to_destination += 1
+				MovementSystem.apply_grab(t)
 				print("[AI] %s grabs %s (+1 beat delay)" % [
 					enemy.stats.display_name, t.stats.display_name])
 		"trash_talk":

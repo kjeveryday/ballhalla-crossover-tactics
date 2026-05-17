@@ -159,3 +159,4 @@ func _reset_ballers_for_next_possession() -> void:
 		b.is_exhausted = false
 		b.consecutive_actions = 0
 		b.acted_this_beat = false
+	MovementSystem.clear_all_paths()

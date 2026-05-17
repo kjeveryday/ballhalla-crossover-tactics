@@ -21,6 +21,7 @@ func _on_action_committed(_action_type: String) -> void:
 		for b in AlliedTeam.get_active_ballers():
 			gain_hype(b, 15.0)
 
+# float input is accepted for caller convenience; value is rounded to int before storage and signal emission.
 func gain_hype(baller: Node, base_amount: float) -> void:
 	var rate: float = 1.0 + baller.stats.hype_charge_rate
 	var gained: int = roundi(base_amount * rate)
@@ -29,6 +30,7 @@ func gain_hype(baller: Node, base_amount: float) -> void:
 	print("[HYPE] %s +%d → %d" % [baller.stats.display_name, gained, baller.current_hype])
 	_check_milestones()
 
+# float input is accepted for caller convenience; value is rounded to int before storage and signal emission.
 func drain_hype(baller: Node, amount: float) -> void:
 	var drained: int = roundi(amount)
 	baller.current_hype = max(0, baller.current_hype - drained)

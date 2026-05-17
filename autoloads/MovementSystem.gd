@@ -70,10 +70,29 @@ func resolve_all_in_motion() -> void:
 			continue_movement(b)
 
 # Greedy fallback: one step toward dest along the dominant axis.
+# Checks passable flag; tries alternate axis if primary is blocked.
 func _pathfind_one_step(col: int, row: int, dest: Vector2i) -> Vector2i:
 	var dc: int = dest.x - col
 	var dr: int = dest.y - row
+	var candidates: Array[Vector2i] = []
 	if abs(dc) >= abs(dr):
-		return Vector2i(col + sign(dc), row)
+		if dc != 0:
+			candidates.append(Vector2i(col + sign(dc), row))
+		if dr != 0:
+			candidates.append(Vector2i(col, row + sign(dr)))
 	else:
-		return Vector2i(col, row + sign(dr))
+		if dr != 0:
+			candidates.append(Vector2i(col, row + sign(dr)))
+		if dc != 0:
+			candidates.append(Vector2i(col + sign(dc), row))
+	for candidate in candidates:
+		var cell: GridManager.GridCell = GridManager.get_cell(candidate.x, candidate.y)
+		if cell != null and cell.passable:
+			return candidate
+	return Vector2i(col, row)  # all candidates blocked — stay put
+
+func clear_all_paths() -> void:
+	_paths.clear()
+
+func apply_grab(baller: Node) -> void:
+	baller.beats_to_destination += 1
