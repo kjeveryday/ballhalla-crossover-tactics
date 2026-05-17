@@ -25,9 +25,12 @@ func capture(baller: Node) -> void:
 func restore() -> void:
 	if actor == null:
 		return
-	actor.grid_col = start_col
-	actor.grid_row = start_row
-	actor.position = start_position
+	# Clear old cell occupancy before moving — direct grid_col/row assignment bypasses GridManager
+	var old_cell: GridManager.GridCell = GridManager.get_cell(actor.grid_col, actor.grid_row)
+	if old_cell != null and old_cell.occupant == actor:
+		old_cell.occupant = null
+	actor.place_on_grid(start_col, start_row)
+	actor.position = start_position  # Snap visual back exactly; overrides grid_to_world result
 	actor.current_stamina = start_stamina
 	actor.is_in_motion = false
 	actor.acted_this_beat = has_acted

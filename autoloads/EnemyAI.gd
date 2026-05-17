@@ -31,9 +31,21 @@ func update_enemy_movement() -> void:
 			continue
 		var dist: int = _chebyshev(enemy, target)
 		var steps: int = _get_aggression_steps(target)
+		if steps == 0 or dist <= 1:
+			continue
+		# BFS runs once per enemy — full-court range guarantees reachability from any cell.
+		# This must stay inside _resolve_enemy_movement (beat step ⑥), which runs AFTER
+		# _resolve_in_motion_ballers (step ⑤). Allied paths are stored in MovementSystem._paths
+		# (memory), not in grid markers, so resetting pf_root here is safe — but only because
+		# of that ordering. Do not reorder beat steps ⑤ and ⑥.
+		var max_range: int = GridManager.GRID_COLS + GridManager.GRID_ROWS
+		GridManager.mark_reachable_cells(enemy.grid_col, enemy.grid_row, max_range)
+		var path: Array = GridManager.get_path_to_cell(target.grid_col, target.grid_row)
 		var taken: int = 0
-		while taken < steps and dist > 1:
-			_move_one_step_toward(enemy, target)
+		var path_idx: int = 1
+		while taken < steps and dist > 1 and path_idx < path.size():
+			_apply_enemy_step(enemy, path[path_idx])
+			path_idx += 1
 			dist = _chebyshev(enemy, target)
 			taken += 1
 
@@ -47,23 +59,20 @@ func _get_aggression_steps(target: Node) -> int:
 		base += 1  # High gravity = extra step
 	return base
 
-func _move_one_step_toward(enemy: Node, target: Node) -> void:
-	var max_range: int = GridManager.GRID_COLS + GridManager.GRID_ROWS
-	GridManager.mark_reachable_cells(enemy.grid_col, enemy.grid_row, max_range)
-	var path: Array = GridManager.get_path_to_cell(target.grid_col, target.grid_row)
-	if path.size() < 2:
-		return  # already adjacent/at target, or grid is fully blocked
-	var step: GridManager.GridCell = path[1]
+func _apply_enemy_step(enemy: Node, step: GridManager.GridCell) -> void:
 	var next_col: int = step.col
 	var next_row: int = step.row
-	var old_cell := GridManager.get_cell(enemy.grid_col, enemy.grid_row)
+	# Skip if target cell is occupied by an ally — never stomp ally occupancy
+	var dest_cell: GridManager.GridCell = GridManager.get_cell(next_col, next_row)
+	if dest_cell != null and dest_cell.occupant != null and dest_cell.occupant != enemy:
+		return
+	var old_cell: GridManager.GridCell = GridManager.get_cell(enemy.grid_col, enemy.grid_row)
 	if old_cell != null and old_cell.occupant == enemy:
 		old_cell.occupant = null
 	enemy.grid_col = next_col
 	enemy.grid_row = next_row
-	var new_cell := GridManager.get_cell(next_col, next_row)
-	if new_cell != null:
-		new_cell.occupant = enemy
+	if dest_cell != null:
+		dest_cell.occupant = enemy
 	MovementSystem.baller_moved.emit(enemy, GridManager.grid_to_world(next_col, next_row))
 
 func _reassign_unguarded(target: Node) -> void:

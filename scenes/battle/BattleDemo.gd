@@ -503,8 +503,12 @@ func _execute_undo() -> void:
 	# Snap any in-progress move animation first
 	if _is_animating:
 		_snap_animations()
-	b.grid_col            = snap.col
-	b.grid_row            = snap.row
+	# Clear current cell occupancy, then restore via place_on_grid so GridManager stays consistent
+	var old_cell: GridManager.GridCell = GridManager.get_cell(b.grid_col, b.grid_row)
+	if old_cell != null and old_cell.occupant == b:
+		old_cell.occupant = null
+	MovementSystem.set_path(b, [])  # Clear any in-flight BFS path
+	b.place_on_grid(snap.col, snap.row)
 	b.position            = snap.position
 	b.current_stamina     = snap.stamina
 	b.acted_this_beat     = false

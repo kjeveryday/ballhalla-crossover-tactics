@@ -34,6 +34,9 @@ func spend_action(action_type: String) -> void:
 func end_beat() -> void:
 	print("[BEAT] Beat %d ended" % current_beat)
 	beat_ended.emit(current_beat)
+	# ⑤ must run before ⑥ — allied BFS paths are stored in MovementSystem._paths (memory).
+	# EnemyAI (⑥) resets grid pf_root markers, which is safe only because allied path
+	# storage is memory-based, not marker-based. Do not reorder these two calls.
 	_resolve_in_motion_ballers()
 	_resolve_enemy_movement()
 	_resolve_enemy_actions()

@@ -17,6 +17,12 @@ func _ready() -> void:
 # Called by FloatingTextSpawner.spawn() to configure and run the animation.
 func play(world_pos: Vector2, text: String, color: Color, font_size: int = 16) -> void:
 	if _tween and _tween.is_running():
+		# Disconnect before kill — CONNECT_ONE_SHOT lives on the tween object, not the
+		# signal name, so kill() alone does not remove the connection. Without this,
+		# recycling a node mid-animation would leave a dangling connection and cause
+		# _pool_callback to fire twice on the new tween's finish.
+		if _tween.finished.is_connected(_on_tween_done):
+			_tween.finished.disconnect(_on_tween_done)
 		_tween.kill()
 
 	position = world_pos

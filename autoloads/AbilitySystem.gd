@@ -27,7 +27,9 @@ func initiate_move(baller: Node, destination: Vector2i) -> void:
 	baller.acted_this_beat = true
 	StaminaSystem.record_action(baller)
 	BeatManager.spend_action("move")
-	# Path was cached by TargetOverlay.show_move_range → mark_reachable_cells
+	# Re-run BFS to guarantee pf_root is fresh regardless of whether show_move_range
+	# was called (programmatic moves skip the UI flow and never prime the cache).
+	GridManager.mark_reachable_cells(baller.grid_col, baller.grid_row, get_move_range(baller))
 	MovementSystem.set_path(baller, GridManager.get_path_to_cell(destination.x, destination.y))
 	MovementSystem.continue_movement(baller)
 	PlayManager.on_action_resolved("move")
@@ -52,7 +54,7 @@ func perform_cut(baller: Node, destination: Vector2i) -> void:
 	baller.acted_this_beat = true
 	StaminaSystem.record_action(baller)
 	BeatManager.spend_action("cut")
-	# Cut uses same BFS path infrastructure as move
+	GridManager.mark_reachable_cells(baller.grid_col, baller.grid_row, get_move_range(baller))
 	MovementSystem.set_path(baller, GridManager.get_path_to_cell(destination.x, destination.y))
 	MovementSystem.continue_movement(baller)
 	PlayManager.on_action_resolved("cut")
