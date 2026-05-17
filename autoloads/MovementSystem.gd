@@ -7,8 +7,18 @@ extends Node
 
 signal baller_moved(baller: Node, world_pos: Vector2)
 
+var _paths: Dictionary = {}  # baller -> Array of GridCell remaining steps
+
+# Store the pre-computed BFS path for a baller. Call before continue_movement.
+# path is the full route from origin to destination (origin cell first).
+func set_path(baller: Node, path: Array) -> void:
+	if path.size() > 1:
+		_paths[baller] = path.slice(1)  # drop origin; remainder are steps to take
+	else:
+		_paths.erase(baller)
+
 # Advance baller one step toward their destination.
-# Uses simple greedy pathfinding: move along the axis with larger delta.
+# Uses BFS pre-computed path if set_path was called; falls back to greedy axis-choice.
 func continue_movement(baller: Node) -> void:
 	if not baller.is_in_motion:
 		return
@@ -24,7 +34,13 @@ func continue_movement(baller: Node) -> void:
 			baller.stats.display_name, baller.beats_to_destination])
 		return
 
-	var next: Vector2i = _pathfind_one_step(baller.grid_col, baller.grid_row, dest)
+	var next: Vector2i
+	if _paths.has(baller) and not (_paths[baller] as Array).is_empty():
+		var step: GridManager.GridCell = (_paths[baller] as Array).pop_front()
+		next = Vector2i(step.col, step.row)
+	else:
+		next = _pathfind_one_step(baller.grid_col, baller.grid_row, dest)
+
 	if GridManager.get_cell(next.x, next.y) != null:
 		# Update grid state instantly; BattleDemo tweens the visual position
 		var old_cell := GridManager.get_cell(baller.grid_col, baller.grid_row)
@@ -43,6 +59,7 @@ func continue_movement(baller: Node) -> void:
 	if Vector2i(baller.grid_col, baller.grid_row) == dest:
 		baller.is_in_motion = false
 		baller.move_destination = Vector2i(-1, -1)
+		_paths.erase(baller)
 		print("[MOVE] %s arrived at destination (%d, %d)" % [
 			baller.stats.display_name, dest.x, dest.y])
 
@@ -52,7 +69,7 @@ func resolve_all_in_motion() -> void:
 		if b.is_in_motion:
 			continue_movement(b)
 
-# Returns the next grid cell (col, row) one step toward dest using greedy axis choice.
+# Greedy fallback: one step toward dest along the dominant axis.
 func _pathfind_one_step(col: int, row: int, dest: Vector2i) -> Vector2i:
 	var dc: int = dest.x - col
 	var dr: int = dest.y - row

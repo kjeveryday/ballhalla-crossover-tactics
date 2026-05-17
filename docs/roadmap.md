@@ -21,7 +21,7 @@ depend on earlier ones.
 | # | Question | Why It Matters | Deadline |
 |---|----------|---------------|---------|
 | D1 | ✅ **RESOLVED — 9×12 grid is final.** Zone boundaries in `GridManager.get_zone()` are locked. No dimension changes. | — | — |
-| D2 | **Is multi-beat movement the right feel?** Currently ballers set `is_in_motion` and advance 1 step/beat until they arrive. Alternative: instant commit with stamina cost. Multi-beat creates interesting gameplay (screens, grabs) but complicates animation and AI. | Affects Phase 2 & Step 17 animations | Before 2.3 |
+| D2 | ✅ **RESOLVED — Multi-beat movement confirmed.** One step per beat, `is_in_motion` pattern stays. Screens are soft cost fields, not hard blocks. See `ARCHITECTURE.md`. | — | — |
 | D3 | ✅ **RESOLVED — Shot clock is real.** Expiry triggers `AbilitySystem._handle_turnover()` through `BeatManager`. See `ARCHITECTURE.md` and `docs/mechanics/shot-clock-enforcement.md`. | — | — |
 | D4 | **How complex should plays get?** Currently: 4 plays, linear sequences, 1-beat duration. Options: keep as-is / add multi-beat plays / add branching conditions. Rewrite cost scales with ambition. | Affects Phase 6 scope | Before 6.2 |
 | D5 | **What is the full game scope?** Single match → main menu? Campaign with roster and progression? Permadeath? The save system design and scene structure depend entirely on this. | Affects Phase 5 | Before 5.1 |
@@ -292,3 +292,4 @@ Track here instead of fixing now. Revisit after Phase 3.
 | `shot-clock-enforcement` | — | 2026-05-17 | ShotClock emits shot_clock_expired; BeatManager routes to _handle_turnover. D3 resolved: clock is real. |
 | `grid-cell-types` | — | 2026-05-17 | GridCell.passable + movement_cost added; is_out_of_bounds removed; BFS filters impassable; GridCellConfig resource created. D1 resolved: 9×12 final. |
 | `movement-range-highlight` | — | 2026-05-17 | TargetOverlay show_move_range/show_cut_range/preview_move_range all use AbilitySystem.get_move_range; show_move_range switches to mark_reachable_cells for BFS caching. |
+| `true-pathfinding` | — | 2026-05-17 | MovementSystem._paths stores BFS routes; AbilitySystem calls set_path before continue_movement; EnemyAI._move_one_step_toward uses BFS per beat. D2 resolved: one step per beat. |

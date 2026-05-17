@@ -48,24 +48,23 @@ func _get_aggression_steps(target: Node) -> int:
 	return base
 
 func _move_one_step_toward(enemy: Node, target: Node) -> void:
-	var dc: int = target.grid_col - enemy.grid_col
-	var dr: int = target.grid_row - enemy.grid_row
-	var next_col: int = enemy.grid_col
-	var next_row: int = enemy.grid_row
-	if abs(dc) >= abs(dr):
-		next_col += sign(dc)
-	else:
-		next_row += sign(dr)
-	if GridManager.get_cell(next_col, next_row) != null:
-		var old_cell := GridManager.get_cell(enemy.grid_col, enemy.grid_row)
-		if old_cell != null and old_cell.occupant == enemy:
-			old_cell.occupant = null
-		enemy.grid_col = next_col
-		enemy.grid_row = next_row
-		var new_cell := GridManager.get_cell(next_col, next_row)
-		if new_cell != null:
-			new_cell.occupant = enemy
-		MovementSystem.baller_moved.emit(enemy, GridManager.grid_to_world(next_col, next_row))
+	var max_range: int = GridManager.GRID_COLS + GridManager.GRID_ROWS
+	GridManager.mark_reachable_cells(enemy.grid_col, enemy.grid_row, max_range)
+	var path: Array = GridManager.get_path_to_cell(target.grid_col, target.grid_row)
+	if path.size() < 2:
+		return  # already adjacent/at target, or grid is fully blocked
+	var step: GridManager.GridCell = path[1]
+	var next_col: int = step.col
+	var next_row: int = step.row
+	var old_cell := GridManager.get_cell(enemy.grid_col, enemy.grid_row)
+	if old_cell != null and old_cell.occupant == enemy:
+		old_cell.occupant = null
+	enemy.grid_col = next_col
+	enemy.grid_row = next_row
+	var new_cell := GridManager.get_cell(next_col, next_row)
+	if new_cell != null:
+		new_cell.occupant = enemy
+	MovementSystem.baller_moved.emit(enemy, GridManager.grid_to_world(next_col, next_row))
 
 func _reassign_unguarded(target: Node) -> void:
 	for enemy in EnemyTeam.get_active_ballers():

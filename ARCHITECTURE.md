@@ -10,13 +10,13 @@ Add entries below as decisions are made.
 
 ---
 
-## D2 (partial) — Screens are soft movement fields, not hard blocks
+## D2 — Multi-beat movement confirmed; screens are soft fields
 
-**Decision:** Screen actions do not set any cell to impassable. Instead, cells adjacent to the screener carry an elevated `movement_cost`. BFS pathfinding sums cost along the path — moving through a screen zone costs more stamina/movement points but is never forbidden. The enemy baller getting screened also takes a direct stamina hit.
+**Decision:** Ballers advance one grid step per beat until they reach their destination (`is_in_motion` pattern). Movement is NOT instant-commit. Screens do not create hard passability blocks — they elevate `movement_cost` on adjacent cells, creating a stamina/range penalty rather than a wall. The enemy baller getting screened also takes a direct stamina hit.
 
-**Rationale:** Hard blocks create degenerate positions (screener permanently walls off a lane). Soft fields preserve routing options while rewarding good screen placement.
+**Rationale:** Multi-beat movement enables screens, grabs, and interception windows between the action and arrival. Instant movement would eliminate those tactical layers. Hard blocks create degenerate positions (screener permanently walls off a lane); soft fields preserve routing options while rewarding good screen placement.
 
-**Tradeoff accepted:** BFS must become cost-aware rather than reachability-only. Weighted BFS (Dijkstra) replaces simple flood-fill for movement range.
+**Tradeoff accepted:** Pathfinding must store the full pre-computed route at initiation so each beat's step follows the BFS-optimal path rather than recomputing from scratch. BFS must become cost-aware rather than reachability-only (weighted BFS / Dijkstra) to respect `movement_cost`.
 
 ---
 

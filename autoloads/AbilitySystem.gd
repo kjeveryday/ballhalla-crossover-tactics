@@ -6,6 +6,10 @@ extends Node
 # Move speed modifiers by position index (PG=0, SG=1, SF=2, PF=3, C=4)
 const SPEED_MODIFIERS: Array = [2, 2, 0, -2, -2]
 
+signal pass_completed(from_pos: Vector2i, to_pos: Vector2i)
+signal turnover_occurred(baller: Node)
+signal screen_performed(screener: Node)
+
 func get_move_range(baller: Node) -> int:
 	var pos_idx: int = baller.stats.position
 	return 4 + SPEED_MODIFIERS[pos_idx]
@@ -16,19 +20,42 @@ func initiate_move(baller: Node, destination: Vector2i) -> void:
 	if not baller.can_act():
 		print("[ABILITY] %s cannot act (exhausted)" % baller.stats.display_name)
 		return
-	var is_cut: bool = destination.y < baller.grid_row
 	var cost: int = StaminaSystem.get_stamina_cost(baller, 10)
-	baller.drain_stamina(cost)
+	StaminaSystem.drain(baller, cost)
 	baller.move_destination = destination
 	baller.is_in_motion = true
 	baller.acted_this_beat = true
 	StaminaSystem.record_action(baller)
 	BeatManager.spend_action("move")
-	# First step resolves immediately as part of this action
+	# Path was cached by TargetOverlay.show_move_range → mark_reachable_cells
+	MovementSystem.set_path(baller, GridManager.get_path_to_cell(destination.x, destination.y))
 	MovementSystem.continue_movement(baller)
 	PlayManager.on_action_resolved("move")
-	if is_cut:
-		PlayManager.on_action_resolved("cut")
+	BeatManager.action_resolved.emit()
+
+# --- Cut ---
+# A cut is a burst sprint toward the opponent's basket.
+# Costs 5 more stamina than a regular move (15 vs 10), but destination must be toward
+# the basket (destination.y < current row). Registers as "cut" for play sequences.
+
+func perform_cut(baller: Node, destination: Vector2i) -> void:
+	if not baller.can_act():
+		print("[ABILITY] %s cannot act (exhausted)" % baller.stats.display_name)
+		return
+	if destination.y >= baller.grid_row:
+		print("[ABILITY] %s cut destination must be toward the basket (lower row)" % baller.stats.display_name)
+		return
+	var cost: int = StaminaSystem.get_stamina_cost(baller, 15)
+	StaminaSystem.drain(baller, cost)
+	baller.move_destination = destination
+	baller.is_in_motion = true
+	baller.acted_this_beat = true
+	StaminaSystem.record_action(baller)
+	BeatManager.spend_action("cut")
+	# Cut uses same BFS path infrastructure as move
+	MovementSystem.set_path(baller, GridManager.get_path_to_cell(destination.x, destination.y))
+	MovementSystem.continue_movement(baller)
+	PlayManager.on_action_resolved("cut")
 	BeatManager.action_resolved.emit()
 
 # --- Pass ---
@@ -41,7 +68,7 @@ func attempt_pass(from_baller: Node, to_baller: Node) -> void:
 		print("[ABILITY] %s does not have the ball" % from_baller.stats.display_name)
 		return
 	var cost: int = StaminaSystem.get_stamina_cost(from_baller, 10)
-	from_baller.drain_stamina(cost)
+	StaminaSystem.drain(from_baller, cost)
 	from_baller.acted_this_beat = true
 	StaminaSystem.record_action(from_baller)
 	BeatManager.spend_action("pass")
@@ -52,6 +79,7 @@ func attempt_pass(from_baller: Node, to_baller: Node) -> void:
 		from_baller.has_ball = false
 		to_baller.has_ball = true
 		HypeManager.gain_hype(from_baller, 5.0)
+		pass_completed.emit(from_baller.position, to_baller.position)
 		PlayManager.on_action_resolved("pass")
 		print("[PASS] %s → %s" % [from_baller.stats.display_name, to_baller.stats.display_name])
 	BeatManager.action_resolved.emit()
@@ -68,7 +96,7 @@ func perform_screen(screener: Node) -> void:
 		print("[ABILITY] %s cannot act (exhausted)" % screener.stats.display_name)
 		return
 	var cost: int = StaminaSystem.get_stamina_cost(screener, 10)
-	screener.drain_stamina(cost)
+	StaminaSystem.drain(screener, cost)
 	screener.acted_this_beat = true
 	StaminaSystem.record_action(screener)
 	# Nullify guard assignment for the enemy guarding the screener
@@ -86,6 +114,7 @@ func perform_screen(screener: Node) -> void:
 				screener.grid_col, screener.grid_row, b.grid_col, b.grid_row)
 			if dist <= 2:
 				PlayManager.pending_shot_bonus += 0.02
+	screen_performed.emit(screener)
 	BeatManager.spend_action("screen")
 	PlayManager.on_action_resolved("screen")
 	BeatManager.action_resolved.emit()
@@ -97,14 +126,14 @@ func talk_trash(talker: Node) -> void:
 		print("[ABILITY] %s cannot act (exhausted)" % talker.stats.display_name)
 		return
 	var cost: int = StaminaSystem.get_stamina_cost(talker, 5)
-	talker.drain_stamina(cost)
+	StaminaSystem.drain(talker, cost)
 	talker.acted_this_beat = true
 	StaminaSystem.record_action(talker)
 	for enemy in EnemyTeam.get_active_ballers():
 		var dist: int = GridManager.chebyshev_distance(
 			talker.grid_col, talker.grid_row, enemy.grid_col, enemy.grid_row)
 		if dist <= 5:
-			enemy.drain_stamina(10)
+			StaminaSystem.drain(enemy, 10)
 			print("[TALK] %s trash talks %s (-10 stamina)" % [
 				talker.stats.display_name, enemy.stats.display_name])
 	BeatManager.spend_action("trash_talk")
@@ -118,7 +147,7 @@ func talk_leadership(talker: Node, ally: Node) -> void:
 		print("[ABILITY] %s cannot act (exhausted)" % talker.stats.display_name)
 		return
 	var cost: int = StaminaSystem.get_stamina_cost(talker, 5)
-	talker.drain_stamina(cost)
+	StaminaSystem.drain(talker, cost)
 	talker.acted_this_beat = true
 	StaminaSystem.record_action(talker)
 	HypeManager.gain_hype(ally, 10.0)
@@ -135,7 +164,7 @@ func talk_iso(talker: Node) -> void:
 		print("[ABILITY] %s cannot act (exhausted)" % talker.stats.display_name)
 		return
 	var cost: int = StaminaSystem.get_stamina_cost(talker, 8)
-	talker.drain_stamina(cost)
+	StaminaSystem.drain(talker, cost)
 	talker.acted_this_beat = true
 	StaminaSystem.record_action(talker)
 	PlayManager.iso_baller = talker
@@ -143,7 +172,7 @@ func talk_iso(talker: Node) -> void:
 		var dist: int = GridManager.chebyshev_distance(
 			talker.grid_col, talker.grid_row, enemy.grid_col, enemy.grid_row)
 		if dist <= 3:
-			enemy.drain_stamina(5)
+			StaminaSystem.drain(enemy, 5)
 			print("[TALK] %s ISO staredown → %s (-5 stamina)" % [
 				talker.stats.display_name, enemy.stats.display_name])
 	BeatManager.spend_action("iso")
@@ -172,4 +201,6 @@ func end_turn(baller: Node) -> void:
 
 func _handle_turnover(baller: Node) -> void:
 	baller.has_ball = false
-	print("[TURNOVER] %s — possession ends (full resolution in Step 14)" % baller.stats.display_name)
+	print("[TURNOVER] %s — possession lost" % baller.stats.display_name)
+	turnover_occurred.emit(baller)
+	QuarterManager.end_possession()
