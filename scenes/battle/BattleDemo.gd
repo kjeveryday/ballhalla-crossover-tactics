@@ -349,6 +349,8 @@ func _wire_signals() -> void:
 	_action_menu.submenu_action_chosen.connect(_on_submenu_action_chosen)
 	_action_menu.action_hovered.connect(_on_action_hovered)
 	_action_menu.action_unhovered.connect(func():
+		if _is_animating:
+			return
 		if _ui_state == UIState.BALLER_SELECTED:
 			_target_overlay.show_move_range(_selected_baller())
 		else:
@@ -380,7 +382,10 @@ func _set_ui_state(new_state: UIState) -> void:
 		UIState.BALLER_SELECTED:
 			_enemy_info_panel.hide_panel()
 			var sel := _selected_baller()
-			_target_overlay.show_move_range(sel)
+			if sel.can_act():
+				_target_overlay.show_move_range(sel)
+			else:
+				_target_overlay.clear()
 			var screen_pos: Vector2 = _court.position + sel.position
 			_action_menu.show_for_baller(sel, screen_pos, _undo_available)
 		UIState.TARGET_MOVE:
@@ -611,8 +616,10 @@ func _on_submenu_action_chosen(action_id: String) -> void:
 
 func _on_target_cell_clicked(col: int, row: int) -> void:
 	if _ui_state == UIState.TARGET_MOVE or _ui_state == UIState.BALLER_SELECTED:
-		_capture_undo_snapshot(_selected_baller())
-		AbilitySystem.initiate_move(_selected_baller(), Vector2i(col, row))
+		var sel := _selected_baller()
+		if sel.can_act():
+			_capture_undo_snapshot(sel)
+		AbilitySystem.initiate_move(sel, Vector2i(col, row))
 		_refresh_status()
 	elif _ui_state == UIState.TARGET_CUT:
 		AbilitySystem.perform_cut(_selected_baller(), Vector2i(col, row))
@@ -642,7 +649,7 @@ func _on_action_hovered(action_id: String) -> void:
 	var sel := _selected_baller()
 	match action_id:
 		"move":
-			pass  # Move range already showing interactively in BALLER_SELECTED — no-op
+			_target_overlay.show_move_range(sel)
 		"cut":
 			_target_overlay.preview_cut_range(sel)
 		"pass":
@@ -682,6 +689,7 @@ func _on_single_anim_done() -> void:
 	elif _anim_count < 0:
 		push_warning("[ANIM] _anim_count underflow — reset to 0")
 		_anim_count = 0
+		_finish_animation()
 
 func _finish_animation() -> void:
 	_anim_count = 0
@@ -774,7 +782,10 @@ func _input(event: InputEvent) -> void:
 
 	match event.keycode:
 		KEY_ESCAPE:
-			_set_ui_state(UIState.IDLE)
+			if _ui_state in [UIState.TARGET_MOVE, UIState.TARGET_CUT, UIState.TARGET_PASS, UIState.TARGET_LEADERSHIP]:
+				_set_ui_state(UIState.BALLER_SELECTED)
+			else:
+				_set_ui_state(UIState.IDLE)
 
 		KEY_LEFT:
 			_selected_idx = (_selected_idx - 1 + 5) % 5

@@ -7,7 +7,7 @@ signal cell_clicked(col: int, row: int)
 signal baller_clicked(baller: Node)
 signal cancelled()
 
-enum Mode { NONE, CELLS, CUT_CELLS, BALLERS, PREVIEW_ENEMIES, PREVIEW_CELLS }
+enum Mode { NONE, CELLS, CUT_CELLS, BALLERS, PREVIEW_ENEMIES, PREVIEW_CELLS, PREVIEW_CUT_CELLS }
 
 var _mode: Mode = Mode.NONE
 var _highlight_cells: Array = []   # Array of Vector2i (col, row)
@@ -23,6 +23,7 @@ const C_ALLY_FILL         := Color(0.10, 0.90, 0.40, 0.18)
 const C_PREVIEW_ENEMY     := Color(1.0, 0.45, 0.1, 0.35)
 const C_PREVIEW_ENEMY_EDGE:= Color(1.0, 0.55, 0.15, 0.80)
 const C_PREVIEW_CELL      := Color(0.15, 0.55, 1.00, 0.18)
+const C_PREVIEW_CUT_CELL  := Color(1.00, 0.50, 0.10, 0.18)
 const C_PATH_DOT          := Color(1.0, 1.0, 1.0, 0.55)
 const C_PATH_RING         := Color(1.0, 1.0, 1.0, 0.80)
 
@@ -107,7 +108,7 @@ func preview_move_range(baller: Node) -> void:
 	queue_redraw()
 
 func preview_cut_range(baller: Node) -> void:
-	_mode = Mode.PREVIEW_CELLS
+	_mode = Mode.PREVIEW_CUT_CELLS
 	_highlight_cells.clear()
 	var move_range: int = AbilitySystem.get_move_range(baller)
 	var cells := GridManager.get_cells_in_range(baller.grid_col, baller.grid_row, move_range)
@@ -124,13 +125,13 @@ func preview_pass_targets(baller: Node) -> void:
 	_mode = Mode.PREVIEW_CELLS
 	_highlight_cells.clear()
 	for b in AlliedTeam.get_active_ballers():
-		if b != baller:
+		if b != baller and not b.is_exhausted:
 			_highlight_cells.append(Vector2i(b.grid_col, b.grid_row))
 	set_process_unhandled_input(false)
 	queue_redraw()
 
 func clear_preview() -> void:
-	if _mode == Mode.PREVIEW_ENEMIES or _mode == Mode.PREVIEW_CELLS:
+	if _mode in [Mode.PREVIEW_ENEMIES, Mode.PREVIEW_CELLS, Mode.PREVIEW_CUT_CELLS]:
 		clear()
 
 func clear() -> void:
@@ -187,6 +188,13 @@ func _draw() -> void:
 			var rect := Rect2(world.x - cs * 0.5, world.y - cs * 0.5, cs, cs)
 			draw_rect(rect, C_PREVIEW_CELL)
 			draw_rect(rect, Color(C_MOVE_EDGE.r, C_MOVE_EDGE.g, C_MOVE_EDGE.b, 0.40), false, 1.5)
+
+	elif _mode == Mode.PREVIEW_CUT_CELLS:
+		for cell_pos in _highlight_cells:
+			var world := GridManager.grid_to_world(cell_pos.x, cell_pos.y)
+			var rect := Rect2(world.x - cs * 0.5, world.y - cs * 0.5, cs, cs)
+			draw_rect(rect, C_PREVIEW_CUT_CELL)
+			draw_rect(rect, Color(C_CUT_EDGE.r, C_CUT_EDGE.g, C_CUT_EDGE.b, 0.40), false, 1.5)
 
 # ── Input ─────────────────────────────────────────────────────────────────────
 

@@ -1,4 +1,5 @@
 extends Node2D
+class_name CourtGrid
 # CourtGrid — always-visible cell borders so the grid is readable at all times.
 # Drawn before ballers/overlays so it sits at the bottom of the court layer stack.
 
